@@ -1,2 +1,0 @@
-# Vercel serverless Python runtime installs deps from this root file.
--r backend/requirements.txt
