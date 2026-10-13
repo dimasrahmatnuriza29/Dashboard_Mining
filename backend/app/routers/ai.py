@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from app.config import settings
 from app.schemas import ChatRequest, ChatResponse, Recommendation
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 log = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"

@@ -6,7 +6,7 @@ from app.data.base import DataProvider
 from app.deps import get_provider
 from app.schemas import DashboardData
 
-router = APIRouter(prefix="/api", tags=["dashboard"])
+router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard", response_model=DashboardData)
