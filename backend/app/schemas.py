@@ -86,6 +86,22 @@ class Recommendation(BaseModel):
     text: str
 
 
+class InsightRequest(BaseModel):
+    context: dict = Field(default_factory=dict)
+
+
+class Finding(BaseModel):
+    severity: Literal["high", "medium", "low"]
+    title: str
+    detail: str
+
+
+class InsightResponse(BaseModel):
+    summary: str
+    findings: list[Finding] = Field(default_factory=list)
+    recommendations: list[Recommendation] = Field(default_factory=list)
+
+
 class ChatResponse(BaseModel):
     reply: str
     recommendations: list[Recommendation] = Field(default_factory=list)

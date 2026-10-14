@@ -1,4 +1,4 @@
-import type { ChatResponse, DashboardData } from './types'
+import type { ChatResponse, DashboardData, InsightResponse } from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
@@ -23,4 +23,11 @@ export const sendChat = (
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, history, context }),
+  })
+
+export const fetchInsights = (context: Record<string, unknown>) =>
+  request<InsightResponse>('/api/ai/insights', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ context }),
   })

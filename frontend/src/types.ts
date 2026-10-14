@@ -72,3 +72,15 @@ export interface ChatResponse {
   reply: string
   recommendations: Recommendation[]
 }
+
+export interface Finding {
+  severity: 'high' | 'medium' | 'low'
+  title: string
+  detail: string
+}
+
+export interface InsightResponse {
+  summary: string
+  findings: Finding[]
+  recommendations: Recommendation[]
+}

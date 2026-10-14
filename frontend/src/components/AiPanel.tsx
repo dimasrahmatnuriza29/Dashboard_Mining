@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Maximize2, Minimize2, ChevronRight, Send, Sparkles } from 'lucide-react'
-import { sendChat } from '../api'
-import type { DashboardData, Recommendation } from '../types'
+import { Maximize2, Minimize2, ChevronRight, Send, Sparkles, RefreshCw } from 'lucide-react'
+import { fetchInsights, sendChat } from '../api'
+import type { DashboardData, Finding, Recommendation } from '../types'
 
 interface Msg {
   role: 'user' | 'ai'
   html: string
   recs?: Recommendation[]
+  findings?: Finding[]
+  label?: string
 }
 
 const GREETING: Msg[] = [
@@ -17,11 +19,11 @@ const GREETING: Msg[] = [
 ]
 
 // compact snapshot the LLM reads — everything on screen, no raw series
-function buildContext(data: DashboardData | null, scope: string) {
+function buildContext(data: DashboardData | null, scope: string, asof: string) {
   if (!data) return { scope, note: 'dashboard masih loading' }
   return {
     scope,
-    as_of_month: data.trend_dim.filter((r) => r.actual != null).map((r) => r.date).sort().pop(),
+    as_of_month: asof,
     kpis: data.kpis.map((k) => ({
       metric: k.label,
       value: k.value,
@@ -49,17 +51,44 @@ const REC_STYLE: Record<Recommendation['level'], { box: string; dot: string; lab
   info: { box: 'border-mine-100 bg-mine-50/60', dot: 'bg-mine-500', label: 'text-mine-700' },
 }
 
+const SEV_STYLE: Record<Finding['severity'], { box: string; chip: string; label: string }> = {
+  high: { box: 'border-rose-100 bg-rose-50/70', chip: 'bg-rose-500', label: 'HIGH' },
+  medium: { box: 'border-amber-100 bg-amber-50/70', chip: 'bg-amber-500', label: 'MEDIUM' },
+  low: { box: 'border-slate-200 bg-white/70', chip: 'bg-slate-400', label: 'LOW' },
+}
+
+// LLM output is rendered as HTML — keep only harmless formatting tags, drop attributes
+const ALLOWED_TAGS = new Set(['b', 'strong', 'i', 'em', 'br', 'p', 'ul', 'ol', 'li'])
+const sanitize = (s: string) =>
+  s.replace(/<\/?([a-z0-9]+)[^>]*>/gi, (t, tag: string) => {
+    const n = tag.toLowerCase()
+    if (!ALLOWED_TAGS.has(n)) return ''
+    return t.startsWith('</') ? `</${n}>` : `<${n}>`
+  })
+
 const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
+// plain-text version of a message for LLM history (includes findings + recs)
+const msgText = (m: Msg) =>
+  [
+    stripHtml(m.html),
+    ...(m.findings ?? []).map((f) => `Temuan [${f.severity}] ${f.title}: ${f.detail}`),
+    ...(m.recs ?? []).map((r) => `Rekomendasi ${r.tag}: ${r.text}`),
+  ].join('\n')
 const resizeCharts = () => setTimeout(() => window.dispatchEvent(new Event('resize')), 380)
 
 interface Props {
   data: DashboardData | null
   scope: string
+  asof: string
 }
 
-export default function AiPanel({ data, scope }: Props) {
+export default function AiPanel({ data, scope, asof }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>(GREETING)
   const [typing, setTyping] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const lastKey = useRef('')
+  const reqId = useRef(0)
   const [max, setMax] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [input, setInput] = useState('')
@@ -69,7 +98,7 @@ export default function AiPanel({ data, scope }: Props) {
 
   useEffect(() => {
     msgsRef.current?.scrollTo({ top: msgsRef.current.scrollHeight })
-  }, [msgs, typing])
+  }, [msgs, typing, analyzing])
 
   const boostTruck = () => {
     const t = truckRef.current
@@ -79,10 +108,47 @@ export default function AiPanel({ data, scope }: Props) {
     boostT.current = window.setTimeout(() => t.classList.remove('boost'), 4000)
   }
 
+  // auto-analysis: whenever fresh dashboard data arrives for a new scope
+  const analyze = (force = false) => {
+    if (!data) return
+    const key = `${scope}|${asof}`
+    if (!force && key === lastKey.current) return
+    lastKey.current = key
+    const id = ++reqId.current
+    setAnalyzing(true)
+    boostTruck()
+    fetchInsights(buildContext(data, scope, asof))
+      .then((r) => {
+        if (id !== reqId.current) return // superseded by a newer filter
+        setMsgs((m) => [
+          ...m,
+          {
+            role: 'ai',
+            label: `Analisis otomatis · ${scope}${asof && !scope.includes(asof) ? ` · ${asof}` : ''}`,
+            html: r.summary,
+            findings: r.findings,
+            recs: r.recommendations,
+          },
+        ])
+      })
+      .catch(() => {
+        if (id !== reqId.current) return
+        setMsgs((m) => [...m, { role: 'ai', html: 'Maaf, analisis otomatis gagal — AI tidak bisa dihubungi. Klik tombol analisis ulang di atas.' }])
+      })
+      .finally(() => {
+        if (id === reqId.current) setAnalyzing(false)
+      })
+  }
+
+  useEffect(() => {
+    analyze()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
+
   const send = (e: React.FormEvent) => {
     e.preventDefault()
     const v = input.trim()
-    if (!v || typing) return
+    if (!v || typing || analyzing) return
     setInput('')
     setMsgs((m) => [...m, { role: 'user', html: v.replace(/</g, '&lt;') }])
     setTyping(true)
@@ -93,9 +159,9 @@ export default function AiPanel({ data, scope }: Props) {
       setTyping(false)
     }
     const history = msgs
-      .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: stripHtml(m.html) }))
+      .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: msgText(m) }))
       .slice(-10)
-    sendChat(v, history, buildContext(data, scope))
+    sendChat(v, history, buildContext(data, scope, asof))
       .then((r) => done(r.reply, r.recommendations))
       .catch(() => done('Maaf, AI tidak bisa dihubungi — backend mungkin sedang restart. Coba lagi.'))
   }
@@ -154,10 +220,20 @@ export default function AiPanel({ data, scope }: Props) {
             </span>
             <div>
               <p className="text-xs font-extrabold text-slate-800">MindID Assistant</p>
-              <p className="text-[10px] font-medium text-emerald-500">Analyzing live data</p>
+              <p className={`text-[10px] font-medium ${analyzing ? 'text-amber-500' : 'text-emerald-500'}`}>
+                {analyzing ? 'Menganalisis dashboard…' : 'Analyzing live data'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => analyze(true)}
+              disabled={analyzing || !data}
+              title="Analisis ulang dashboard"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-mine-700 disabled:opacity-40"
+            >
+              <RefreshCw size={13} className={analyzing ? 'animate-spin' : ''} />
+            </button>
             <button
               onClick={() => { setMax((v) => !v); resizeCharts() }}
               title="Maximize / restore"
@@ -186,13 +262,41 @@ export default function AiPanel({ data, scope }: Props) {
               <div key={i} className="space-y-2">
                 <div className="flex gap-2.5">
                   <span className="mt-1 h-6 w-6 shrink-0 rounded-lg bg-gradient-to-br from-copper-400 to-copper-600" />
-                  <div
-                    className="max-w-[85%] rounded-2xl rounded-tl-sm bg-slate-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-slate-600 ring-1 ring-slate-100"
-                    dangerouslySetInnerHTML={{ __html: m.html }}
-                  />
+                  <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-slate-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-slate-600 ring-1 ring-slate-100">
+                    {m.label && (
+                      <p className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-copper-600">
+                        <Sparkles size={10} /> {m.label}
+                      </p>
+                    )}
+                    <div
+                      className="[&_li]:mt-0.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:mt-1 [&_ul]:list-disc [&_ul]:pl-4"
+                      dangerouslySetInnerHTML={{ __html: sanitize(m.html) }}
+                    />
+                  </div>
                 </div>
-                {m.recs && (
+                {m.findings && m.findings.length > 0 && (
                   <div className="ml-8 space-y-2">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Temuan ({m.findings.length})</p>
+                    {m.findings.map((f, j) => {
+                      const s = SEV_STYLE[f.severity]
+                      return (
+                        <div key={j} className={`rounded-xl border p-3 shadow-sm ${s.box}`}>
+                          <div className="flex items-start gap-1.5">
+                            <span className={`mt-px shrink-0 rounded px-1.5 py-px text-[8px] font-extrabold tracking-wide text-white ${s.chip}`}>{s.label}</span>
+                            <p className="text-[11px] font-bold leading-snug text-slate-700">{f.title}</p>
+                          </div>
+                          <div
+                            className="mt-1.5 text-[11px] leading-relaxed text-slate-600 [&_li]:mt-0.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4"
+                            dangerouslySetInnerHTML={{ __html: sanitize(f.detail) }}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {m.recs && m.recs.length > 0 && (
+                  <div className="ml-8 space-y-2">
+                    {m.findings && <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Rekomendasi ({m.recs.length})</p>}
                     {m.recs.map((r, j) => {
                       const s = REC_STYLE[r.level]
                       return (
@@ -201,7 +305,10 @@ export default function AiPanel({ data, scope }: Props) {
                             <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
                             <p className={`text-[10px] font-bold tracking-wide ${s.label}`}>{r.tag}</p>
                           </div>
-                          <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{r.text}</p>
+                          <div
+                            className="mt-1 text-[11px] leading-relaxed text-slate-600 [&_li]:mt-0.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4"
+                            dangerouslySetInnerHTML={{ __html: sanitize(r.text) }}
+                          />
                         </div>
                       )
                     })}
@@ -210,10 +317,13 @@ export default function AiPanel({ data, scope }: Props) {
               </div>
             ),
           )}
-          {typing && (
+          {(typing || analyzing) && (
             <div className="flex gap-2.5">
               <span className="mt-1 h-6 w-6 shrink-0 rounded-lg bg-gradient-to-br from-copper-400 to-copper-600" />
               <div className="rounded-2xl rounded-tl-sm bg-slate-50 px-3.5 py-3 ring-1 ring-slate-100">
+                {analyzing && (
+                  <p className="mb-1.5 text-[10px] font-semibold text-slate-500">Membaca seluruh data dashboard & menyusun temuan…</p>
+                )}
                 <span className="typing-dot" /> <span className="typing-dot" /> <span className="typing-dot" />
               </div>
             </div>
@@ -231,7 +341,7 @@ export default function AiPanel({ data, scope }: Props) {
               autoComplete="off"
               className="w-full bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
             />
-            <button type="submit" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-mine-600 text-white transition hover:bg-mine-700">
+            <button type="submit" disabled={analyzing || typing} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-mine-600 text-white transition hover:bg-mine-700 disabled:opacity-50">
               <Send size={13} />
             </button>
           </div>

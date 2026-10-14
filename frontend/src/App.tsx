@@ -306,7 +306,7 @@ export default function App() {
           </p>
         </div>
 
-        <AiPanel data={data} scope={scopeLabel} />
+        <AiPanel data={data} scope={scopeLabel} asof={gAsof || latestMo} />
       </main>
 
       <DrillModal spec={drill} onClose={() => setDrill(null)} />
