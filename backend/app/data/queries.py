@@ -46,13 +46,13 @@ WITH actual AS (
   GROUP BY MONTH_START
 ),
 fc AS (
-  SELECT FORECAST_DATE AS d,
+  SELECT DATE_TRUNC('month', FORECAST_DATE)::DATE AS d,
          SUM(FORECAST_QTY) AS qty,
          SUM(LOWER_BOUND)  AS lo,
          SUM(UPPER_BOUND)  AS hi
   FROM {T_FORECAST}
   WHERE UNIT IN {TON_UNITS}
-  GROUP BY FORECAST_DATE
+  GROUP BY DATE_TRUNC('month', FORECAST_DATE)
 ),
 fvt AS (
   SELECT MONTH_START AS d,
@@ -84,7 +84,8 @@ WITH actual AS (
   GROUP BY 1, 2, 3, 4
 ),
 fc AS (
-  SELECT f.PT_CODE AS pt, f.COMMODITY AS com, f.UNIT, f.FORECAST_DATE AS d,
+  SELECT f.PT_CODE AS pt, f.COMMODITY AS com, f.UNIT,
+         DATE_TRUNC('month', f.FORECAST_DATE)::DATE AS d,
          SUM(f.FORECAST_QTY) AS qty,
          SUM(f.LOWER_BOUND)  AS lo,
          SUM(f.UPPER_BOUND)  AS hi

@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MIND ID — Waste to Value Dashboard (Mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+        colors: {
+          navy: { 700: '#123a63', 800: '#0d2d4f', 900: '#0a2240', 950: '#071a33' },
+        },
+      },
+    },
+  }
+</script>
+<style>
+  body { background: #eef2f6; }
+  .card { background: #fff; border: 1px solid #e3e9f0; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,40,70,.04), 0 4px 14px rgba(15,40,70,.05); transition: box-shadow .25s, transform .25s; }
+  .card:hover { box-shadow: 0 2px 4px rgba(15,40,70,.06), 0 10px 28px rgba(15,40,70,.10); }
+  .card-title { font-size: 13px; font-weight: 700; color: #0d2d4f; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 18px; font-size: 12.5px; font-weight: 500; color: #c3d2e4; border-left: 3px solid transparent; cursor: pointer; transition: all .2s; }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: #fff; }
+  .nav-item.active { background: linear-gradient(90deg, rgba(34,197,94,.22), rgba(34,197,94,0)); border-left-color: #22c55e; color: #fff; font-weight: 600; }
+  .tab { padding: 5px 12px; font-size: 11px; font-weight: 600; color: #64748b; border-radius: 8px; cursor: pointer; transition: all .2s; }
+  .tab.active { background: #e8f1fb; color: #0d4f8b; box-shadow: inset 0 0 0 1px #c9ddf3; }
+  .tab-line { padding: 6px 14px; font-size: 11px; font-weight: 700; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab-line.active { color: #0d4f8b; border-bottom-color: #0d4f8b; }
+  .ring { --p: 70; --c: #16a34a; width: 62px; height: 62px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--p) * 1%), #e6edf3 0); display: grid; place-items: center; }
+  .ring > span { width: 50px; height: 50px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #0d2d4f; }
+  .tbl th { font-size: 10.5px; font-weight: 700; color: #0d2d4f; background: #f1f5fa; padding: 7px 10px; text-align: left; }
+  .tbl td { font-size: 11px; color: #334155; padding: 8px 10px; border-top: 1px solid #edf1f6; }
+  .tbl tbody tr { transition: background .15s; }
+  .tbl tbody tr:hover { background: #f6faff; }
+  .fade-in { animation: fadeIn .5s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .pulse-dot { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.5); } 50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); } }
+  select.hdr { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); color: #fff; font-size: 11.5px; border-radius: 8px; padding: 6px 28px 6px 10px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 9px center; cursor: pointer; }
+  select.hdr option { color: #0d2d4f; }
+  .story-track { transition: transform .6s cubic-bezier(.4,0,.2,1); }
+
+  /* sidebar floating mining icons */
+  .float-ic { position: absolute; color: #4ade80; opacity: .28; filter: drop-shadow(0 0 6px rgba(74,222,128,.35)); animation: floatY var(--d, 9s) ease-in-out var(--dl, 0s) infinite; }
+  @keyframes floatY { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-16px) rotate(5deg); } }
+  .dust { position: absolute; bottom: -8px; width: 4px; height: 4px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,.6); opacity: 0; animation: dustUp var(--d, 12s) linear var(--dl, 0s) infinite; }
+  @keyframes dustUp { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: .55; } 85% { opacity: .2; } 100% { transform: translateY(-420px); opacity: 0; } }
+
+  /* ===== review mode (mockup only) ===== */
+  body.rv-on, body.rv-on * { cursor: crosshair !important; }
+  #rvBtn { position: fixed; right: 18px; bottom: 18px; z-index: 95; display: flex; align-items: center; gap: 7px; border-radius: 999px; background: linear-gradient(90deg,#0d2d4f,#123a63); color: #fff; font-size: 12px; font-weight: 700; padding: 10px 18px; box-shadow: 0 6px 18px rgba(7,26,51,.35); border: 1px solid rgba(255,255,255,.15); transition: transform .15s; }
+  #rvBtn:hover { transform: translateY(-2px); }
+  #rvBtn.on { background: linear-gradient(90deg,#b45309,#f59e0b); }
+  #rvBox { position: fixed; z-index: 88; pointer-events: none; border: 2px solid #f59e0b; background: rgba(245,158,11,.14); border-radius: 8px; display: none; }
+  #rvTag { position: fixed; z-index: 89; pointer-events: none; background: #0d2d4f; color: #fff; font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; display: none; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,.3); }
+  #rvTag b { color: #fbbf24; }
+  #rvPanel { position: fixed; left: 18px; bottom: 18px; z-index: 95; width: 320px; max-height: 46vh; overflow: auto; background: #fff; border: 1px solid #dbe4ee; border-radius: 12px; box-shadow: 0 10px 30px rgba(7,26,51,.22); padding: 12px; display: none; }
+  .rv-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px; border-top: 1px solid #eef2f7; font-size: 11px; }
+  .rv-item b { color: #0d2d4f; }
+  .rv-item .sub { color: #94a3b8; font-size: 10px; }
+  .rv-item .rm { margin-left: auto; color: #cbd5e1; font-weight: 700; padding: 0 4px; }
+  .rv-item .rm:hover { color: #ef4444; }
+  #rvToast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 16px); z-index: 96; background: #052e16; color: #bbf7d0; font-size: 12px; font-weight: 600; padding: 9px 18px; border-radius: 999px; border: 1px solid rgba(34,197,94,.4); box-shadow: 0 8px 24px rgba(0,0,0,.3); opacity: 0; transition: all .25s; pointer-events: none; }
+  #rvToast.show { opacity: 1; transform: translate(-50%, 0); }
+
+</style>
+</head>
+<body class="font-sans text-slate-700 antialiased">
+
+<!-- ================= HEADER ================= -->
+<header class="sticky top-0 z-30 flex h-[74px] items-center gap-6 bg-gradient-to-r from-navy-950 via-navy-900 to-navy-800 px-6 text-white shadow-lg relative">
+  <div class="flex w-[190px] shrink-0 items-center gap-2.5">
+    <div class="grid h-10 w-10 place-items-center rounded-full border-[3px] border-white">
+      <div class="h-3.5 w-3.5 rounded-full bg-white"></div>
+    </div>
+    <div class="leading-tight">
+      <p class="text-[19px] font-extrabold tracking-tight">MIND ID</p>
+      <p class="text-[8.5px] font-medium text-slate-300">Mining for a Better Future</p>
+    </div>
+  </div>
+  <div class="h-10 w-px bg-white/20"></div>
+  <div class="min-w-0">
+    <h1 class="text-[21px] font-extrabold leading-tight">Waste to Value Dashboard</h1>
+    <p class="text-[12px] text-slate-300">From Waste to Sustainable Revenue <span class="mx-1.5 text-slate-500">|</span> Toward Zero Waste</p>
+  </div>
+  <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2.5 rounded-xl px-3 py-1.5">
+    <div class="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
+      <i data-lucide="leaf" class="h-5 w-5"></i>
+    </div>
+    <div class="leading-tight">
+      <p class="text-[14px] font-extrabold tracking-wide text-green-400">ZERO WASTE</p>
+      <p class="text-[9.5px] text-slate-300">Cleaner Environment<br />Greater Value</p>
+    </div>
+  </div>
+
+  <div class="ml-auto flex items-center gap-5">
+    <div class="flex items-center gap-2.5">
+      <i data-lucide="calendar-days" class="h-5 w-5 text-slate-300"></i>
+      <div>
+        <p class="mb-0.5 text-[10px] text-slate-400">Period</p>
+        <select class="hdr" id="fPeriod">
+          <option>Jan 2025 – Dec 2025</option>
+          <option>Jan 2024 – Dec 2024</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <p class="mb-0.5 text-[10px] text-slate-400">PT</p>
+      <select class="hdr w-[150px]" id="fPt">
+        <option value="ALL">All PT</option>
+        <option value="ANTAM">ANTAM</option>
+        <option value="INALUM">INALUM</option>
+        <option value="TIMAH">TIMAH</option>
+      </select>
+    </div>
+    <div>
+      <p class="mb-0.5 text-[10px] text-slate-400">Commodity</p>
+      <select class="hdr w-[150px]">
+        <option>All Commodity</option>
+        <option>Nickel</option>
+        <option>Aluminium</option>
+        <option>Tin</option>
+        <option>Bauxite</option>
+      </select>
+    </div>
+    <div class="h-10 w-px bg-white/20"></div>
+    <div class="flex items-center gap-2.5">
+      <div class="grid h-9 w-9 place-items-center rounded-full bg-white/10 ring-1 ring-white/25">
+        <i data-lucide="user-round" class="h-5 w-5"></i>
+      </div>
+      <div class="leading-tight">
+        <p class="text-[12px] font-semibold">MIND ID</p>
+        <p class="text-[10px] text-slate-400">Executive View <span class="ml-0.5">▾</span></p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="flex">
+<!-- ================= SIDEBAR ================= -->
+<aside class="fixed left-0 top-[74px] z-20 flex h-[calc(100vh-74px)] w-[190px] shrink-0 flex-col overflow-hidden bg-navy-950 py-4">
+  <nav class="space-y-0.5">
+    <div class="nav-item active"><i data-lucide="home" class="h-4 w-4"></i>Overview</div>
+    <div class="nav-item"><i data-lucide="file-text" class="h-4 w-4"></i>Waste by PT</div>
+    <div class="nav-item"><i data-lucide="layers" class="h-4 w-4"></i>Waste by Type</div>
+    <div class="nav-item"><i data-lucide="circle-dollar-sign" class="h-4 w-4"></i>Revenue Potential</div>
+    <div class="nav-item"><i data-lucide="shield-check" class="h-4 w-4"></i>Sustainability</div>
+    <div class="nav-item"><i data-lucide="settings-2" class="h-4 w-4"></i>Details &amp; Drill Down</div>
+  </nav>
+
+  <!-- floating mining icons (decorative) -->
+  <div class="relative flex-1 overflow-hidden" aria-hidden="true">
+    <i data-lucide="pickaxe"    class="float-ic h-6 w-6" style="top:6%;  left:14%; --d:9s;  --dl:0s"></i>
+    <i data-lucide="truck"      class="float-ic h-7 w-7" style="top:16%; left:66%; --d:11s; --dl:1.2s"></i>
+    <i data-lucide="mountain"   class="float-ic h-8 w-8" style="top:30%; left:34%; --d:10s; --dl:.6s"></i>
+    <i data-lucide="gem"        class="float-ic h-5 w-5" style="top:44%; left:74%; --d:8s;  --dl:2s"></i>
+    <i data-lucide="factory"    class="float-ic h-7 w-7" style="top:56%; left:12%; --d:12s; --dl:.3s"></i>
+    <i data-lucide="cog"        class="float-ic h-6 w-6" style="top:68%; left:56%; --d:9s;  --dl:1.6s"></i>
+    <i data-lucide="hard-hat"   class="float-ic h-6 w-6" style="top:80%; left:30%; --d:10s; --dl:.9s"></i>
+    <i data-lucide="fuel"       class="float-ic h-5 w-5" style="top:88%; left:70%; --d:11s; --dl:2.4s"></i>
+    <span class="dust" style="left:22%; --d:14s; --dl:0s"></span>
+    <span class="dust" style="left:48%; --d:17s; --dl:4s"></span>
+    <span class="dust" style="left:63%; --d:12s; --dl:7s"></span>
+    <span class="dust" style="left:80%; --d:15s; --dl:2s"></span>
+  </div>
+
+  <!-- tagline -->
+  <div class="mt-auto px-4 pb-5">
+    <div class="mb-2 grid h-8 w-8 place-items-center rounded-full bg-green-500/20 text-green-400"><i data-lucide="sprout" class="h-4 w-4"></i></div>
+    <p class="text-[15px] font-bold leading-snug text-white">Less Waste<br />More Value</p>
+    <p class="text-[12px] text-slate-300">for a Sustainable<br />Future</p>
+  </div>
+</aside>
+
+<!-- ================= MAIN ================= -->
+<main class="ml-[190px] min-w-0 flex-1 space-y-3.5 p-4">
+
+  <!-- KPI ROW -->
+  <section class="grid grid-cols-5 gap-3.5">
+    <div class="card fade-in flex items-start gap-3 p-4">
+      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-green-50 text-green-600"><i data-lucide="recycle" class="h-7 w-7"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[12px] font-semibold text-navy-800">Total Waste Generated</p>
+        <p class="text-[10.5px] text-slate-400">(2025 YTD)</p>
+        <p class="mt-1.5 text-[22px] font-extrabold text-navy-900"><span class="countup" data-v="1248000">0</span> <span class="text-[13px] font-semibold text-slate-500">Ton</span></p>
+        <div class="mt-0.5 flex items-center justify-between">
+          <p class="text-[10.5px] font-semibold text-green-600">▼ 32% <span class="font-normal text-slate-400">vs. 2024</span></p>
+          <div class="spark h-6 w-20" data-s="95,88,90,80,76,70,66,64" data-c="#16a34a"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card fade-in flex items-start gap-3 p-4">
+      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-green-50 text-green-600"><i data-lucide="coins" class="h-7 w-7"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[12px] font-semibold text-navy-800">Total Potential Revenue</p>
+        <p class="text-[10.5px] text-slate-400">(from Waste Utilization)</p>
+        <p class="mt-1.5 text-[22px] font-extrabold text-navy-900"><span class="text-[13px] font-semibold text-slate-500">USD</span> <span class="countup" data-v="68.7" data-d="1">0</span> <span class="text-[13px] font-semibold text-slate-500">Million</span></p>
+        <div class="mt-0.5 flex items-center justify-between">
+          <p class="text-[10.5px] font-semibold text-green-600">▲ 45% <span class="font-normal text-slate-400">vs. 2024</span></p>
+          <div class="spark h-6 w-20" data-s="30,34,38,41,47,52,60,68" data-c="#16a34a"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card fade-in flex items-start gap-3 p-4">
+      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-green-50 text-green-600"><i data-lucide="leaf" class="h-7 w-7"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[12px] font-semibold text-navy-800">Waste Recycled / Utilized</p>
+        <p class="text-[10.5px] text-transparent">.</p>
+        <p class="mt-1.5 text-[22px] font-extrabold text-navy-900"><span class="countup" data-v="72">0</span>%</p>
+        <div class="mt-0.5 flex items-center justify-between">
+          <p class="text-[10.5px] font-semibold text-green-600">▲ 18% <span class="font-normal text-slate-400">vs. 2024</span></p>
+          <div class="spark h-6 w-20" data-s="54,58,61,65,68,70,71,72" data-c="#16a34a"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card fade-in flex items-start gap-3 p-4">
+      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700"><i data-lucide="cloud" class="h-7 w-7"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[12px] font-semibold text-navy-800">Estimated CO₂ Avoided</p>
+        <p class="text-[10.5px] text-transparent">.</p>
+        <p class="mt-1.5 text-[22px] font-extrabold text-navy-900"><span class="countup" data-v="245000">0</span> <span class="text-[13px] font-semibold text-slate-500">Ton CO₂e</span></p>
+        <div class="mt-0.5 flex items-center justify-between">
+          <p class="text-[10.5px] font-semibold text-green-600">▲ 40% <span class="font-normal text-slate-400">vs. 2024</span></p>
+          <div class="spark h-6 w-20" data-s="120,140,150,170,185,205,228,245" data-c="#16a34a"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card fade-in flex items-start gap-3 p-4">
+      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-green-50 text-green-600"><i data-lucide="target" class="h-7 w-7"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[12px] font-semibold text-navy-800">Zero Waste Progress</p>
+        <p class="mt-3 text-[26px] font-extrabold text-navy-900"><span class="countup" data-v="68">0</span>%</p>
+        <div class="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div id="zwBar" class="h-full w-0 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-[1500ms]"></div>
+        </div>
+        <div class="mt-1 flex justify-between text-[9.5px] text-slate-400"><span>Target 2030</span><span>100%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROW 2 -->
+  <section class="grid grid-cols-12 gap-3.5">
+    <!-- trend + util by PT -->
+    <div class="card col-span-5 flex p-4">
+      <div class="min-w-0 flex-1">
+        <p class="card-title">Waste Generation &amp; Utilization Trend</p>
+        <div id="chTrend" class="mt-1 h-[265px]"></div>
+      </div>
+      <div class="ml-3 w-[150px] shrink-0 border-l border-slate-100 pl-3">
+        <p class="card-title mb-2">Utilization by PT</p>
+        <div class="space-y-3.5">
+          <div class="flex items-center gap-3"><div class="ring" style="--p:76"><span>76%</span></div><div><p class="text-[11.5px] font-bold text-navy-800">ANTAM</p><p class="text-[10.5px] font-semibold text-green-600">+22% <span class="font-normal text-slate-400">YoY</span></p></div></div>
+          <div class="flex items-center gap-3"><div class="ring" style="--p:71"><span>71%</span></div><div><p class="text-[11.5px] font-bold text-navy-800">INALUM</p><p class="text-[10.5px] font-semibold text-green-600">+18% <span class="font-normal text-slate-400">YoY</span></p></div></div>
+          <div class="flex items-center gap-3"><div class="ring" style="--p:68"><span>68%</span></div><div><p class="text-[11.5px] font-bold text-navy-800">TIMAH</p><p class="text-[10.5px] font-semibold text-green-600">+15% <span class="font-normal text-slate-400">YoY</span></p></div></div>
+        </div>
+        <p class="mt-4 text-[9px] leading-snug text-slate-400">* Utilization = Recycled / Utilized vs. Total Waste</p>
+      </div>
+    </div>
+
+    <!-- map -->
+    <div class="card col-span-4 p-4">
+      <div class="flex items-center justify-between">
+        <p class="card-title">Waste Potential by Location</p>
+        <button class="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-navy-700 transition hover:bg-slate-50">View Detail <i data-lucide="arrow-right" class="h-3 w-3"></i></button>
+      </div>
+      <div id="chMap" class="mt-1 h-[255px]"></div>
+      <div class="flex justify-center gap-5 text-[10.5px] text-slate-500">
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-green-600"></span>ANTAM</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span>INALUM</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>TIMAH</span>
+      </div>
+    </div>
+
+    <!-- AI insights -->
+    <div class="card col-span-3 flex flex-col overflow-hidden border-green-100 bg-gradient-to-b from-green-50/70 to-white p-4">
+      <div class="flex items-center gap-2.5">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-700 text-[12px] font-extrabold text-white shadow-md shadow-emerald-500/30">AI</div>
+        <div>
+          <p class="card-title">AI Insights &amp; Recommendations</p>
+          <p class="flex items-center gap-1.5 text-[10px] text-slate-400"><span class="pulse-dot h-1.5 w-1.5 rounded-full bg-green-500"></span>Generated at 10:24 (30 Apr 2025)</p>
+        </div>
+      </div>
+      <ol class="mt-3 flex-1 space-y-3 text-[11px] leading-relaxed">
+        <li>
+          <p class="font-bold text-navy-800">1. High-value waste opportunity detected</p>
+          <p class="pl-3 text-slate-600">– ANTAM: 12,500 ton of slag (Ni, Co) can be processed into ferronickel. Potential revenue: <b class="text-navy-800">USD 18.2M / year</b>.</p>
+        </li>
+        <li>
+          <p class="font-bold text-navy-800">2. Utilization rate improvement</p>
+          <p class="pl-3 text-slate-600">– INALUM: Currently 68%. With improved segregation and process, availability can reach <b class="text-navy-800">80% (+12% revenue potential)</b>.</p>
+        </li>
+        <li>
+          <p class="font-bold text-navy-800">3. Operational recommendation</p>
+          <p class="pl-3 text-slate-600">– Prioritize collaboration with external partner for <b class="text-navy-800">tin slag processing (TIMAH)</b>.</p>
+        </li>
+      </ol>
+      <button class="mx-auto mt-3 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-green-600 to-emerald-700 px-5 py-2 text-[11px] font-bold text-white shadow-md shadow-emerald-600/30 transition hover:scale-[1.03]">View AI Recommendation Detail <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></button>
+    </div>
+  </section>
+
+  <!-- ROW 3 -->
+  <section class="grid grid-cols-12 gap-3.5">
+    <div class="card col-span-3 p-4">
+      <p class="card-title">Waste Composition by Type</p>
+      <div class="mt-2 flex gap-1 rounded-lg bg-slate-50 p-1" id="compTabs">
+        <span class="tab active" data-k="holding">Total Holding</span>
+        <span class="tab" data-k="pt">By PT</span>
+        <span class="tab" data-k="com">By Commodity</span>
+      </div>
+      <div id="chComp" class="mt-1 h-[200px]"></div>
+    </div>
+
+    <div class="card col-span-3 p-4">
+      <p class="card-title">Revenue Potential by Waste Type</p>
+      <p class="text-[10px] text-slate-400">Unit: USD Million</p>
+      <div id="chRev" class="h-[232px]"></div>
+    </div>
+
+    <div class="card col-span-3 p-4">
+      <p class="card-title mb-2">Top 5 Revenue Opportunities</p>
+      <table class="tbl w-full overflow-hidden rounded-lg">
+        <thead><tr><th class="w-6">#</th><th>Opportunity</th><th>PT</th><th class="text-right">Potential Revenue<br /><span class="font-medium text-slate-400">(USD Million/year)</span></th></tr></thead>
+        <tbody id="topBody"></tbody>
+        <tfoot><tr><td colspan="3" class="bg-slate-50 font-bold text-navy-800">Total Potential Revenue</td><td class="bg-slate-50 text-right font-extrabold text-navy-900" id="topTotal"></td></tr></tfoot>
+      </table>
+    </div>
+
+    <div class="card col-span-3 flex flex-col overflow-hidden p-4">
+      <p class="card-title mb-2">Success Stories</p>
+      <div class="relative flex-1 overflow-hidden">
+        <div id="storyTrack" class="story-track"></div>
+      </div>
+      <div id="storyDots" class="mt-2 flex justify-center gap-1.5"></div>
+    </div>
+  </section>
+
+  <!-- ROW 4 -->
+  <section class="grid grid-cols-12 gap-3.5">
+    <div class="card col-span-9 p-4">
+      <div class="flex items-center gap-4">
+        <p class="card-title">Detailed View by PT</p>
+        <div class="flex" id="ptTabs">
+          <span class="tab-line active" data-pt="ANTAM">ANTAM</span>
+          <span class="tab-line" data-pt="INALUM">INALUM</span>
+          <span class="tab-line" data-pt="TIMAH">TIMAH</span>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-12 gap-4" id="ptDetail">
+        <div class="col-span-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+          <div class="flex items-center gap-2.5">
+            <div id="ptLogo" class="grid h-10 w-10 place-items-center rounded-full bg-green-600 text-[11px] font-extrabold text-white">A</div>
+            <p id="ptName" class="text-[15px] font-extrabold text-navy-900">ANTAM</p>
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div><p class="text-[10px] text-slate-400">Total Waste</p><p class="text-[17px] font-extrabold text-navy-900" id="ptTotal">—</p></div>
+            <div><p class="text-[10px] text-slate-400">Utilization</p><p class="text-[17px] font-extrabold text-green-600" id="ptUtil">—</p></div>
+            <div class="col-span-2"><p class="text-[10px] text-slate-400">Revenue Potential</p><p class="text-[17px] font-extrabold text-navy-900" id="ptRev">—</p></div>
+          </div>
+        </div>
+        <div class="col-span-5">
+          <p class="mb-1.5 text-[11px] font-bold text-navy-800" id="ptStreamTitle">Top Waste Streams – ANTAM</p>
+          <table class="tbl w-full overflow-hidden rounded-lg">
+            <thead><tr><th>Waste Type</th><th class="text-right">Volume (Ton)</th><th>Utilization Rate</th><th class="text-right">Revenue Potential (USD M)</th></tr></thead>
+            <tbody id="ptBody"></tbody>
+          </table>
+        </div>
+        <div class="col-span-4">
+          <p class="text-[11px] font-bold text-navy-800" id="ptMonthTitle">Monthly Waste &amp; Utilization – ANTAM</p>
+          <div id="chMonthly" class="h-[160px]"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card col-span-3 flex flex-col p-4">
+      <div class="flex items-center gap-2"><i data-lucide="clipboard-list" class="h-5 w-5 text-navy-700"></i><p class="card-title">Next Steps</p></div>
+      <ol class="mt-2.5 flex-1 list-decimal space-y-1.5 pl-5 text-[11px] text-slate-600 marker:font-bold marker:text-navy-700">
+        <li>Scale up slag processing (ANTAM).</li>
+        <li>Optimize material recovery from tailings (ANTAM).</li>
+        <li>Accelerate red mud utilization (INALUM).</li>
+        <li>Explore strategic partner for tin slag (TIMAH).</li>
+        <li>Implement waste tracking system company-wide.</li>
+      </ol>
+      <button class="mx-auto mt-3 flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-1.5 text-[11px] font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700">View Action Plan <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></button>
+    </div>
+  </section>
+</main>
+</div>
+
+<!-- ================= FOOTER BAND ================= -->
+<footer class="ml-[190px] flex items-center justify-between bg-gradient-to-r from-navy-950 via-navy-900 to-navy-800 px-10 py-4 text-white">
+  <div class="flex flex-1 items-center justify-around text-[12.5px] font-medium text-slate-200">
+    <span class="flex items-center gap-2.5"><i data-lucide="leaf" class="h-5 w-5 text-green-400"></i>Zero Waste</span>
+    <span class="flex items-center gap-2.5"><i data-lucide="recycle" class="h-5 w-5 text-slate-300"></i>Circular Economy</span>
+    <span class="flex items-center gap-2.5"><i data-lucide="handshake" class="h-5 w-5 text-slate-300"></i>Stronger Partnerships</span>
+    <span class="flex items-center gap-2.5"><i data-lucide="trending-up" class="h-5 w-5 text-slate-300"></i>More Revenue</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="grid h-8 w-8 place-items-center rounded-full border-[3px] border-white"><div class="h-2.5 w-2.5 rounded-full bg-white"></div></div>
+    <div class="leading-tight"><p class="text-[15px] font-extrabold">MIND ID</p><p class="text-[7.5px] text-slate-300">Mining for a Better Future</p></div>
+  </div>
+</footer>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const GREEN = '#16a34a', NAVY = '#0d2d4f', GREY = '#c3cdd9'
+const PT_COLORS = { ANTAM: '#16a34a', INALUM: '#2563eb', TIMAH: '#f97316' }
+const charts = []
+const fmt = (n, d = 0) => n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d })
+
+/* ---------- count-up ---------- */
+document.querySelectorAll('.countup').forEach((el) => {
+  const target = parseFloat(el.dataset.v), d = +(el.dataset.d || 0), t0 = performance.now(), dur = 1300
+  const tick = (t) => {
+    const p = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3)
+    el.textContent = fmt(target * e, d)
+    if (p < 1) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+})
+setTimeout(() => ($('#zwBar').style.width = '68%'), 200)
+
+/* ---------- sparklines ---------- */
+document.querySelectorAll('.spark').forEach((el) => {
+  const data = el.dataset.s.split(',').map(Number)
+  const ch = echarts.init(el); charts.push(ch)
+  ch.setOption({
+    grid: { left: 0, right: 0, top: 2, bottom: 2 },
+    xAxis: { type: 'category', show: false },
+    yAxis: { type: 'value', min: 'dataMin', show: false },
+    series: [{ type: 'line', data, smooth: true, symbol: 'none', lineStyle: { color: el.dataset.c, width: 1.8 }, areaStyle: { color: el.dataset.c, opacity: .12 } }],
+    tooltip: { show: false },
+  })
+})
+
+/* ---------- trend chart ---------- */
+const q = ['Q1 2024','Q2 2024','Q3 2024','Q4 2024','Q1 2025','Q2 2025','Q3 2025','Q4 2025']
+const rec = [60,88,116,120,122,128,132,136]
+const land = [58,62,64,50,52,58,55,40]
+const util = [54,58,61,65,68,71,74,77]
+const chTrend = echarts.init($('#chTrend')); charts.push(chTrend)
+chTrend.setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, textStyle: { fontSize: 11 },
+    valueFormatter: (v, s) => (s === '% Utilization' ? v + '%' : fmt(v, 0) + 'k Ton') },
+  legend: { top: 0, left: 'center', itemGap: 14, itemWidth: 14, itemHeight: 8, icon: 'roundRect',
+    textStyle: { fontSize: 10.5, color: '#475569' },
+    data: ['Recycled / Utilized', 'Landfill / Others', '% Utilization'] },
+  graphic: [{ type: 'text', left: 2, top: 3, style: { text: 'Unit: Ton', fontSize: 10, fill: '#94a3b8' } }],
+  grid: { left: 42, right: 42, top: 36, bottom: 24 },
+  xAxis: { type: 'category', data: q, axisLabel: { fontSize: 10, color: '#64748b' }, axisLine: { lineStyle: { color: '#dbe3ec' } } },
+  yAxis: [
+    { type: 'value', max: 200, axisLabel: { formatter: (v) => v + 'k', fontSize: 10, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#eef2f6' } } },
+    { type: 'value', max: 100, axisLabel: { formatter: '{value}%', fontSize: 10, color: '#94a3b8' }, splitLine: { show: false } },
+  ],
+  series: [
+    { name: 'Recycled / Utilized', type: 'bar', stack: 'w', data: rec, barWidth: 22,
+      itemStyle: { color: GREEN, borderRadius: [2, 2, 0, 0] } },
+    { name: 'Landfill / Others', type: 'bar', stack: 'w', data: land,
+      itemStyle: { color: GREY, borderRadius: [3, 3, 0, 0] } },
+    { name: '% Utilization', type: 'line', yAxisIndex: 1, data: util, smooth: true,
+      lineStyle: { color: NAVY, width: 2.4 }, itemStyle: { color: NAVY }, symbolSize: 6,
+      label: { show: true, position: 'top', formatter: '{c}%', fontSize: 10, fontWeight: 700, color: NAVY } },
+  ],
+})
+
+/* ---------- composition donut ---------- */
+const compSets = {
+  holding: [
+    { name: 'Tailings', value: 42, c: '#1e4d8b' },
+    { name: 'Slag', value: 24, c: '#2e9e62' },
+    { name: 'Fly Ash', value: 14, c: '#f97316' },
+    { name: 'Scrap Metal', value: 8, c: '#8b5cf6' },
+    { name: 'Used Oil', value: 6, c: '#eab308' },
+    { name: 'Other', value: 6, c: '#cbd5e1' },
+  ],
+  pt: [
+    { name: 'ANTAM', value: 44, c: PT_COLORS.ANTAM },
+    { name: 'INALUM', value: 32, c: PT_COLORS.INALUM },
+    { name: 'TIMAH', value: 24, c: PT_COLORS.TIMAH },
+  ],
+  com: [
+    { name: 'Nickel', value: 38, c: '#16a34a' },
+    { name: 'Aluminium', value: 26, c: '#2563eb' },
+    { name: 'Tin', value: 18, c: '#f97316' },
+    { name: 'Bauxite', value: 12, c: '#8b5cf6' },
+    { name: 'Other', value: 6, c: '#cbd5e1' },
+  ],
+}
+const chComp = echarts.init($('#chComp')); charts.push(chComp)
+function donutOption(items) {
+  return {
+    tooltip: { textStyle: { fontSize: 11 }, formatter: '{b}: {c}%' },
+    legend: { orient: 'vertical', right: 0, top: 'middle', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 10.5, color: '#475569' }, formatter: (n) => `${n}  ${items.find(i => i.name === n)?.value ?? ''}%` },
+    series: [{
+      type: 'pie', radius: ['58%', '82%'], center: ['32%', '52%'],
+      label: { show: false },
+      data: items.map(i => ({ name: i.name, value: i.value, itemStyle: { color: i.c } })),
+    }, {
+      type: 'pie', radius: ['0%', '0%'], center: ['32%', '52%'], silent: true,
+      label: { show: true, position: 'center', formatter: () => '1.25 M\nTon', fontSize: 15, fontWeight: 800, color: NAVY, lineHeight: 16 },
+      data: [{ value: 1 }],
+      markPoint: { silent: true, label: { show: true, position: 'inside', formatter: () => 'Total\nWaste', fontSize: 9, color: '#94a3b8' }, symbol: 'circle', symbolSize: 1, data: [{ coord: ['32%', '68%'] }] },
+    }],
+  }
+}
+chComp.setOption(donutOption(compSets.holding))
+$('#compTabs').addEventListener('click', (e) => {
+  const t = e.target.closest('.tab'); if (!t) return
+  document.querySelectorAll('#compTabs .tab').forEach((x) => x.classList.remove('active'))
+  t.classList.add('active')
+  chComp.setOption(donutOption(compSets[t.dataset.k]))
+})
+
+/* ---------- revenue bar ---------- */
+const revData = [
+  ['Slag (FerroNickel)', 24.8, '#1e4d8b'],
+  ['Tailings (Critical Minerals)', 18.7, '#2563eb'],
+  ['Fly Ash (Cement/Construction)', 9.6, '#f97316'],
+  ['Scrap Metal', 7.3, '#8b5cf6'],
+  ['Used Oil (Re-refining)', 5.1, '#16a34a'],
+  ['Others', 3.2, '#94a3b8'],
+]
+const chRev = echarts.init($('#chRev')); charts.push(chRev)
+chRev.setOption({
+  tooltip: { textStyle: { fontSize: 11 }, formatter: '{b}: USD {c}M' },
+  grid: { left: 4, right: 44, top: 6, bottom: 4, containLabel: false },
+  xAxis: { type: 'value', max: 30, axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#eef2f6' } } },
+  yAxis: { type: 'category', inverse: true, data: revData.map((r) => r[0]),
+    axisLabel: { fontSize: 9.5, color: '#475569', width: 95, overflow: 'truncate' }, axisTick: { show: false }, axisLine: { show: false } },
+  series: [{
+    type: 'bar', data: revData.map((r) => ({ value: r[1], itemStyle: { color: r[2] } })),
+    barWidth: 12, label: { show: true, position: 'right', fontSize: 9.5, fontWeight: 700, color: NAVY },
+  }],
+})
+
+/* ---------- top 5 table ---------- */
+const top5 = [
+  { opp: 'Slag to FerroNickel', pt: 'ANTAM', rev: 18.2 },
+  { opp: 'Tailings to Rare Earth', pt: 'ANTAM', rev: 12.6 },
+  { opp: 'Fly Ash to Cement', pt: 'INALUM', rev: 9.6 },
+  { opp: 'Tin Slag processing', pt: 'TIMAH', rev: 7.8 },
+  { opp: 'Used Oil Re-refining', pt: 'INALUM', rev: 5.1 },
+]
+$('#topBody').innerHTML = top5.map((t, i) =>
+  `<tr><td class="font-bold text-slate-400">${i + 1}</td><td>${t.opp}</td><td class="font-semibold" style="color:${PT_COLORS[t.pt]}">${t.pt}</td><td class="text-right font-bold text-navy-800">${fmt(t.rev, 1)}</td></tr>`).join('')
+$('#topTotal').textContent = fmt(top5.reduce((a, t) => a + t.rev, 0), 1)
+
+/* ---------- success stories carousel ---------- */
+const stories = [
+  {
+    pt: 'ANTAM', grad: 'linear-gradient(135deg,#14532d,#166534 55%,#3f6212)',
+    title: 'ANTAM – Nickel Slag to Ferronickel',
+    body: 'Utilization of nickel slag has been commercially sold and is generating USD 12.9M revenue in 2024.',
+    status: 'Ongoing',
+  },
+  {
+    pt: 'INALUM', grad: 'linear-gradient(135deg,#78350f,#a16207 60%,#713f12)',
+    title: 'INALUM – Red Mud to Construction Material',
+    body: 'Pilot project in collaboration with domestic partner, targeting 50,000 ton/year by 2026.',
+    status: 'On Progress',
+  },
+  {
+    pt: 'TIMAH', grad: 'linear-gradient(135deg,#7c2d12,#9a3412 60%,#b45309)',
+    title: 'TIMAH – Tin Slag to Construction Material',
+    body: 'Cooperation with smelter partner to process tin slag into building blocks, targeting 15,000 ton/year.',
+    status: 'On Progress',
+  },
+]
+const track = $('#storyTrack')
+track.innerHTML = stories.map((s) => `
+  <div class="story-slide w-full shrink-0 pr-1">
+    <div class="h-[88px] rounded-xl" style="background:${s.grad}"></div>
+    <p class="mt-2 text-[11px] font-extrabold text-navy-800">${s.title}</p>
+    <p class="mt-0.5 text-[10.5px] leading-snug text-slate-500">${s.body}</p>
+    <span class="mt-1.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700">${s.status}</span>
+  </div>`).join('')
+track.style.display = 'flex'
+$('#storyDots').innerHTML = stories.map((_, i) =>
+  `<button data-i="${i}" class="h-1.5 rounded-full transition-all ${i === 0 ? 'w-4 bg-navy-700' : 'w-1.5 bg-slate-300'}"></button>`).join('')
+let cur = 0
+function goStory(i) {
+  cur = (i + stories.length) % stories.length
+  track.style.transform = `translateX(-${cur * 100}%)`
+  document.querySelectorAll('#storyDots button').forEach((d, j) =>
+    d.className = `h-1.5 rounded-full transition-all ${j === cur ? 'w-4 bg-navy-700' : 'w-1.5 bg-slate-300'}`)
+}
+$('#storyDots').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) goStory(+b.dataset.i) })
+setInterval(() => goStory(cur + 1), 5000)
+
+/* ---------- PT detail ---------- */
+const ptData = {
+  ANTAM: {
+    waste: 542000, util: 76, rev: 28.4, letter: 'A', color: PT_COLORS.ANTAM,
+    streams: [
+      ['Slag', 210000, 82, 18.2],
+      ['Tailings', 165000, 71, 12.6],
+      ['Fly Ash', 80000, 63, 6.4],
+      ['Others', 87000, 54, 3.2],
+    ],
+    monthly: [38, 40, 42, 45, 44, 48, 46, 50, 52, 55, 54, 58],
+    monthlyUtil: [68, 70, 71, 72, 74, 73, 75, 76, 77, 78, 78, 80],
+  },
+  INALUM: {
+    waste: 398000, util: 71, rev: 22.5, letter: 'I', color: PT_COLORS.INALUM,
+    streams: [
+      ['Red Mud (BR)', 175000, 61, 8.9],
+      ['Fly Ash', 90000, 78, 9.6],
+      ['Used Oil', 42000, 82, 5.1],
+      ['Others', 91000, 56, 4.4],
+    ],
+    monthly: [30, 32, 31, 34, 35, 36, 38, 37, 39, 40, 41, 43],
+    monthlyUtil: [63, 64, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75],
+  },
+  TIMAH: {
+    waste: 308000, util: 68, rev: 17.8, letter: 'T', color: PT_COLORS.TIMAH,
+    streams: [
+      ['Tin Slag', 142000, 62, 7.8],
+      ['Tailing', 98000, 71, 5.9],
+      ['Overburden', 45000, 55, 2.1],
+      ['Others', 23000, 48, 2.0],
+    ],
+    monthly: [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+    monthlyUtil: [58, 60, 61, 62, 64, 65, 66, 67, 68, 69, 70, 71],
+  },
+}
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const chMonthly = echarts.init($('#chMonthly')); charts.push(chMonthly)
+
+function renderPt(pt) {
+  const d = ptData[pt]
+  $('#ptName').textContent = pt
+  $('#ptStreamTitle').textContent = `Top Waste Streams – ${pt}`
+  $('#ptMonthTitle').textContent = `Monthly Waste & Utilization – ${pt}`
+  $('#ptLogo').textContent = d.letter
+  $('#ptLogo').style.background = d.color
+  $('#ptTotal').innerHTML = `${fmt(d.waste)} <span class="text-[10px] font-semibold text-slate-400">Ton</span>`
+  $('#ptUtil').innerHTML = `${d.util}%`
+  $('#ptRev').innerHTML = `USD ${fmt(d.rev, 1)}M`
+  $('#ptBody').innerHTML = d.streams.map(([t, v, u, r]) =>
+    `<tr><td>${t}</td><td class="text-right">${fmt(v)}</td><td><div class="flex items-center gap-1.5"><div class="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full" style="width:${u}%;background:${d.color}"></div></div><span class="font-semibold">${u}%</span></div></td><td class="text-right font-bold text-navy-800">${fmt(r, 1)}</td></tr>`).join('')
+  chMonthly.setOption({
+    tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
+    legend: { show: true, top: 0, right: 0, itemWidth: 10, itemHeight: 8, textStyle: { fontSize: 9, color: '#475569' } },
+    grid: { left: 30, right: 30, top: 26, bottom: 20 },
+    xAxis: { type: 'category', data: months, axisLabel: { fontSize: 8.5, color: '#64748b', rotate: 0 }, axisLine: { lineStyle: { color: '#dbe3ec' } } },
+    yAxis: [
+      { type: 'value', max: 80, axisLabel: { formatter: (v) => v + 'k', fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#eef2f6' } } },
+      { type: 'value', max: 100, axisLabel: { formatter: '{value}%', fontSize: 9, color: '#94a3b8' }, splitLine: { show: false } },
+    ],
+    series: [
+      { name: 'Waste Generated', type: 'bar', data: d.monthly, barWidth: 8, itemStyle: { color: '#94a3b8', borderRadius: [2, 2, 0, 0] } },
+      { name: 'Utilization Rate', type: 'line', yAxisIndex: 1, data: d.monthlyUtil, smooth: true, lineStyle: { color: GREEN, width: 2 }, itemStyle: { color: GREEN }, symbolSize: 4 },
+    ],
+  })
+}
+$('#ptTabs').addEventListener('click', (e) => {
+  const t = e.target.closest('.tab-line'); if (!t) return
+  document.querySelectorAll('#ptTabs .tab-line').forEach((x) => x.classList.remove('active'))
+  t.classList.add('active')
+  renderPt(t.dataset.pt)
+})
+$('#fPt').addEventListener('change', (e) => {
+  const pt = e.target.value === 'ALL' ? 'ANTAM' : e.target.value
+  document.querySelectorAll('#ptTabs .tab-line').forEach((x) => x.classList.toggle('active', x.dataset.pt === pt))
+  renderPt(pt)
+})
+renderPt('ANTAM')
+
+/* ---------- map ---------- */
+const sites = [
+  { name: 'ANTAM · Kolaka', pt: 'ANTAM', lon: 121.32, lat: -4.05 },
+  { name: 'ANTAM · Pomalaa', pt: 'ANTAM', lon: 121.60, lat: -4.17 },
+  { name: 'ANTAM · Halmahera Timur', pt: 'ANTAM', lon: 128.27, lat: 1.10 },
+  { name: 'ANTAM · Bogor', pt: 'ANTAM', lon: 106.79, lat: -6.59 },
+  { name: 'ANTAM · Tayan', pt: 'ANTAM', lon: 110.00, lat: -0.10 },
+  { name: 'INALUM · Kuala Tanjung', pt: 'INALUM', lon: 98.62, lat: 3.37 },
+  { name: 'INALUM · Mempawah', pt: 'INALUM', lon: 109.00, lat: 0.40 },
+  { name: 'TIMAH · Pangkal Pinang', pt: 'TIMAH', lon: 106.10, lat: -2.13 },
+  { name: 'TIMAH · Kundur', pt: 'TIMAH', lon: 104.68, lat: 0.80 },
+  { name: 'TIMAH · Belitung', pt: 'TIMAH', lon: 107.60, lat: -2.90 },
+]
+const GEO_URLS = [
+  'https://raw.githubusercontent.com/ans-4175/peta-indonesia-geojson/master/indonesia-prov.geojson',
+  'https://raw.githubusercontent.com/CodeforNigeria/NigeriaMaps/master/indonesia.json',
+]
+const chMap = echarts.init($('#chMap')); charts.push(chMap)
+
+function mapSeries() {
+  return sites.map((s) => ({
+    name: s.pt, type: 'scatter', coordinateSystem: 'geo', zlevel: 2,
+    symbolSize: s.name.includes('Halmahera') || s.name.includes('Kuala') ? 12 : 9,
+    itemStyle: { color: PT_COLORS[s.pt], borderColor: '#fff', borderWidth: 1.5, shadowBlur: 4, shadowColor: 'rgba(0,0,0,.3)' },
+    data: [{ name: s.name, value: [s.lon, s.lat] }],
+    label: { show: true, formatter: '{b}', position: 'top', fontSize: 8.5, fontWeight: 600, color: '#0d2d4f', distance: 4 },
+  }))
+}
+function drawMap() {
+  const opt = {
+    tooltip: { textStyle: { fontSize: 11 }, formatter: (p) => `${p.name}` },
+    geo: {
+      map: 'indonesia', roam: false, top: 8, bottom: 8, left: 4, right: 4,
+      itemStyle: { areaColor: '#dcebf5', borderColor: '#ffffff', borderWidth: .8 },
+      emphasis: { disabled: true },
+    },
+    series: mapSeries(),
+  }
+  chMap.setOption(opt)
+}
+// try real geojson first; fall back to a schematic scatter map
+fetch(GEO_URLS[0])
+  .then((r) => { if (!r.ok) throw 0; return r.json() })
+  .then((geo) => { echarts.registerMap('indonesia', geo); drawMap() })
+  .catch(() => {
+    chMap.setOption({
+      tooltip: { textStyle: { fontSize: 11 } },
+      grid: { left: 10, right: 10, top: 10, bottom: 26 },
+      xAxis: { min: 94, max: 142, splitLine: { show: false }, axisLabel: { fontSize: 8, color: '#94a3b8' }, name: 'Lon', nameTextStyle: { fontSize: 9, color: '#94a3b8' } },
+      yAxis: { min: -11, max: 7, splitLine: { show: false }, axisLabel: { fontSize: 8, color: '#94a3b8' }, name: 'Lat', nameTextStyle: { fontSize: 9, color: '#94a3b8' } },
+      series: sites.map((s) => ({
+        name: s.pt, type: 'scatter',
+        symbolSize: 11,
+        itemStyle: { color: PT_COLORS[s.pt], borderColor: '#fff', borderWidth: 1.5, shadowBlur: 4, shadowColor: 'rgba(0,0,0,.25)' },
+        data: [{ name: s.name, value: [s.lon, s.lat] }],
+        label: { show: true, formatter: '{b}', position: 'top', fontSize: 8.5, fontWeight: 600, color: '#0d2d4f', distance: 4 },
+      })),
+    })
+  })
+
+lucide.createIcons()
+window.addEventListener('resize', () => charts.forEach((c) => c.resize()))
+</script>
+
+<!-- ============ REVIEW MODE (mockup only) ============ -->
+<button id="rvBtn"><i data-lucide="mouse-pointer-2" class="h-4 w-4"></i><span>Review Mode</span></button>
+<div id="rvBox"></div>
+<div id="rvTag"></div>
+<div id="rvPanel">
+  <div class="mb-1 flex items-center justify-between">
+    <p class="text-[12px] font-extrabold text-navy-900">Bagian yang ditandai</p>
+    <button id="rvCopy" class="rounded-md bg-navy-800 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-navy-700">Copy list</button>
+  </div>
+  <p class="mb-1 text-[10px] leading-snug text-slate-400">Setiap klik <b>langsung menyalin</b> nama bagian ke clipboard — tinggal <b>Ctrl+V</b> di chat Cascade lalu tulis revisinya.</p>
+  <div id="rvList"></div>
+</div>
+<div id="rvToast"></div>
+<script>
+(() => {
+  const body = document.body
+  const btn = $('#rvBtn'), box = $('#rvBox'), tag = $('#rvTag'), panel = $('#rvPanel'), list = $('#rvList')
+  let on = false, picked = []
+
+  const secName = (el) => {
+    const card = el.closest('.card')
+    const t = card && (card.querySelector('.card-title') || card.querySelector('p'))
+    if (t) return t.textContent.trim()
+    const nav = el.closest('.nav-item')
+    if (nav) return 'Menu · ' + nav.textContent.trim()
+    if (el.closest('header')) return 'Header'
+    if (el.closest('aside')) return 'Sidebar'
+    if (el.closest('footer')) return 'Footer Band'
+    return 'Element'
+  }
+  const elHint = (el) => {
+    if (el.id) return '#' + el.id
+    const cls = (el.className && el.className.baseVal === undefined) ? String(el.className).trim().split(/\s+/)[0] : ''
+    return el.tagName.toLowerCase() + (cls && !cls.startsWith('rv') ? '.' + cls : '')
+  }
+
+  const move = (e) => {
+    if (!on || e.target.closest('#rvBtn,#rvPanel')) { box.style.display = tag.style.display = 'none'; return }
+    const r = e.target.getBoundingClientRect()
+    Object.assign(box.style, { display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' })
+    tag.innerHTML = '<b>' + secName(e.target) + '</b> · ' + elHint(e.target)
+    tag.style.display = 'block'
+    const tw = tag.offsetWidth
+    tag.style.left = Math.min(Math.max(8, r.left), innerWidth - tw - 8) + 'px'
+    tag.style.top = Math.max(8, r.top - 26) + 'px'
+  }
+
+  const render = () => {
+    list.innerHTML = picked.map((p, i) =>
+      `<div class="rv-item"><span class="font-extrabold text-amber-600">${i + 1}.</span><span><b>${p.sec}</b><br><span class="sub">${p.hint}</span></span><span class="rm" data-i="${i}">✕</span></div>`
+    ).join('') || '<p class="py-2 text-center text-[10.5px] text-slate-400">Belum ada — klik bagian yang mau direvisi.</p>'
+  }
+
+  const toast = $('#rvToast')
+  let toastT
+  const ping = (msg) => {
+    toast.textContent = msg
+    toast.classList.add('show')
+    clearTimeout(toastT)
+    toastT = setTimeout(() => toast.classList.remove('show'), 1600)
+  }
+  // clipboard API needs a secure context — fallback for file:// pages
+  const copyText = (txt) => {
+    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(txt)
+    return new Promise((res, rej) => {
+      const ta = document.createElement('textarea')
+      ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(ta); ta.select()
+      try { document.execCommand('copy') ? res() : rej() } catch (e) { rej(e) }
+      ta.remove()
+    })
+  }
+
+  document.addEventListener('mousemove', move)
+  document.addEventListener('click', (e) => {
+    if (!on) return
+    if (e.target.closest('#rvBtn')) return
+    if (e.target.closest('.rm')) { picked.splice(+e.target.dataset.i, 1); render(); return }
+    if (e.target.closest('#rvPanel')) return
+    e.preventDefault(); e.stopPropagation()
+    const sec = secName(e.target), hint = elHint(e.target)
+    picked.push({ sec, hint })
+    render()
+    panel.style.display = 'block'
+    // instant copy — user just Ctrl+V in the Cascade chat
+    copyText(`${sec} (${hint}): `)
+      .then(() => ping('✓ Tersalin — Ctrl+V di chat, lalu tulis revisinya'))
+      .catch(() => ping('Gagal copy — pakai tombol Copy list'))
+    box.style.borderColor = '#22c55e'; box.style.background = 'rgba(34,197,94,.18)'
+    setTimeout(() => { box.style.borderColor = '#f59e0b'; box.style.background = 'rgba(245,158,11,.14)' }, 250)
+  }, true)
+
+  $('#rvCopy').addEventListener('click', () => {
+    const txt = picked.map((p, i) => `${i + 1}. ${p.sec} (${p.hint}): `).join('\n')
+    copyText(txt).then(() => ping('✓ List tersalin — Ctrl+V di chat'))
+    $('#rvCopy').textContent = 'Copied!'
+    setTimeout(() => $('#rvCopy').textContent = 'Copy list', 1200)
+  })
+
+  btn.addEventListener('click', () => {
+    on = !on
+    body.classList.toggle('rv-on', on)
+    btn.classList.toggle('on', on)
+    btn.querySelector('span').textContent = on ? 'Review: ON — klik elemen' : 'Review Mode'
+    panel.style.display = on && picked.length ? 'block' : (on ? 'block' : 'none')
+    if (!on) { box.style.display = tag.style.display = 'none' }
+    else render()
+  })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && on) btn.click() })
+})()
+</script>
+<script>lucide.createIcons()</script>
+</body>
+</html>
