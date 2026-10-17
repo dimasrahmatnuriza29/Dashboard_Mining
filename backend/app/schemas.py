@@ -5,70 +5,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class Kpi(BaseModel):
-    id: str
-    label: str
-    value: float
-    unit: str = ""
-    decimals: int = 0
-    delta: float                          # vs previous period, %
-    good_when_negative: bool = False      # e.g. cost/ton
-    sparkline: list[float] = Field(default_factory=list)
-
-
-class TrendPoint(BaseModel):
-    date: str                             # ISO date
-    actual: float | None = None
-    forecast: float | None = None
-    lower: float | None = None            # 95% CI
-    upper: float | None = None
-    target: float | None = None           # plan/RKAP for that month
-    gap: float | None = None              # EXPECTED_GAP_QTY (forecast − target)
-
-
-class TrendRow(BaseModel):
-    """Trend point at PT × commodity grain — frontend filters/aggregates."""
-    pt_code: str
-    commodity: str
-    unit: str
-    date: str
-    actual: float | None = None
-    forecast: float | None = None
-    lower: float | None = None
-    upper: float | None = None
-    target: float | None = None
-    gap: float | None = None
-
-
-class CompositionSlice(BaseModel):
-    name: str
-    value: float
-
-
-class SiteRow(BaseModel):
-    site: str
-    commodity: str | None = None            # dominant commodity, latest month
-    production_t: float
-    achievement_pct: float                  # actual vs target, latest month
-    downtime_h: float                       # downtime hours, latest month
-    downtime_avg_h: float | None = None     # avg monthly downtime, trailing 6 months
-    forecast_delta_pct: float
-    status: Literal["On Track", "Ahead", "Watch", "Behind"]
-
-
-class DashboardData(BaseModel):
-    """Everything the dashboard needs in one read-only bundle."""
-
-    generated_at: str
-    source: str                           # "mock" | "snowflake"
-    kpis: list[Kpi]
-    trend: list[TrendPoint]
-    trend_dim: list[TrendRow] = Field(default_factory=list)
-    composition: list[CompositionSlice]
-    site_summary: list[SiteRow]
-    ytd_achievement_pct: float
-
-
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
@@ -96,12 +32,255 @@ class Finding(BaseModel):
     detail: str
 
 
+class KeyInsight(BaseModel):
+    kind: Literal["check", "warn"]
+    text: str
+
+
+class VizSpec(BaseModel):
+    """Small structured chart the LLM may attach to an answer."""
+    kind: str = "bar"                       # bar | line | pie
+    title: str = ""
+    x: list[str] = Field(default_factory=list)           # category labels
+    series: list[dict] = Field(default_factory=list)     # [{"name": str, "data": [n]}]
+
+
 class InsightResponse(BaseModel):
     summary: str
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[Recommendation] = Field(default_factory=list)
+    viz: VizSpec | None = None
+    key_insights: list[KeyInsight] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+    generated_at: str = ""
 
 
 class ChatResponse(BaseModel):
     reply: str
     recommendations: list[Recommendation] = Field(default_factory=list)
+    viz: VizSpec | None = None
+
+
+# =====================================================================
+# Intelligence pages (Production / Zero Waste) — presentation payload
+# =====================================================================
+
+class KpiCard(BaseModel):
+    id: str
+    label: str
+    sub: str = ""
+    icon: str = "activity"           # lucide icon key, resolved on the frontend
+    icon_tone: str = "blue"          # blue | green | sky
+    value: float
+    decimals: int = 0
+    prefix: str = ""                 # e.g. 'USD'
+    suffix: str = ""                 # e.g. 'Mt', 'Million', 'Ton CO₂e'
+    delta: str = ""                  # e.g. '▲ 6.8% YoY'
+    delta_tone: str = "green"        # green | amber | red | slate
+    spark: list[float] = Field(default_factory=list)
+    progress: float | None = None    # 0-100 → renders a progress bar instead of delta
+    progress_min: str = ""
+    progress_max: str = ""
+
+
+class TrendSeries(BaseModel):
+    months: list[str]
+    actual: list[float | None]
+    forecast: list[float | None]
+    target: float | None = None
+
+
+class ForecastBadge(BaseModel):
+    label: str
+    value: float
+    decimals: int = 2
+    unit: str = ""
+    delta: str = ""
+
+
+class TrendDimRow(BaseModel):
+    """Per-PT×commodity trend — native units (TON/KG/WMT/TNI/MTON/TON SN)."""
+    pt_code: str
+    pt: str                             # display name
+    commodity: str
+    unit: str
+    actual: list[float | None]          # 12 months, actual_qty
+    forecast: list[float | None]        # 12 months, bridged at last actual
+    target_monthly: float | None = None # avg monthly target
+    projected: float | None = None      # full-year projection
+    target_annual: float | None = None  # ytd target + forecast-month target
+    delta_pct: float | None = None      # projected vs annual target
+
+
+class DonutItem(BaseModel):
+    name: str
+    value: float
+    color: str
+
+
+class DonutChart(BaseModel):
+    items: list[DonutItem]
+    center_top: str = ""
+    center_bottom: str = ""
+
+
+class PtProdRow(BaseModel):
+    pt: str
+    pt_code: str = ""
+    color: str
+    actual: float
+    plan: float
+    achievement_pct: float
+    delta_pct: float
+
+
+class MapSite(BaseModel):
+    name: str
+    pt: str
+    lon: float
+    lat: float
+    show_label: bool = False
+    size: float = 10
+
+
+class TopSite(BaseModel):
+    rank: int
+    site: str
+    pt: str
+    prod: float
+    vs_plan: str
+    spark: list[float]
+
+
+class MarketItem(BaseModel):
+    name: str
+    price: str
+    delta: str
+    up: bool
+
+
+class InsightItem(BaseModel):
+    kind: str = "check"              # 'check' | 'warn'
+    text: str
+
+
+class AiBlock(BaseModel):
+    title: str
+    tag: str = ""
+    body: str = ""
+    actions: list[str] = Field(default_factory=list)
+
+
+class ProductionData(BaseModel):
+    generated_at: str
+    source: str
+    periods: list[str]
+    selected_pt: str = ""
+    kpis: list[KpiCard]
+    trend: TrendSeries
+    forecast_badge: ForecastBadge
+    trend_dim: list[TrendDimRow] = []
+    commodity: DonutChart
+    pt_rows: list[PtProdRow]
+    pt_total: PtProdRow
+    ai: AiBlock
+    sites: list[MapSite]
+    pt_colors: dict[str, str]
+    top_sites: list[TopSite]
+    market: list[MarketItem]
+    key_insights: list[InsightItem]
+    next_actions: list[str]
+
+
+class WasteTrend(BaseModel):
+    quarters: list[str]
+    recycled: list[float]
+    landfill: list[float]
+    utilization: list[float]
+
+
+class UtilRing(BaseModel):
+    pt: str
+    pct: float
+    yoy: str
+
+
+class CompSet(BaseModel):
+    key: str
+    label: str
+    items: list[DonutItem]
+    center: str = ""
+
+
+class BarItem(BaseModel):
+    name: str
+    value: float
+    color: str
+
+
+class RevBar(BaseModel):
+    name: str
+    pot: float
+    rea: float
+
+
+class TopOpp(BaseModel):
+    rank: int
+    opp: str
+    pt: str
+    rev: float
+
+
+class Story(BaseModel):
+    pt: str
+    gradient: str
+    title: str
+    body: str
+    status: str
+    image: str | None = None
+
+
+class WasteStream(BaseModel):
+    name: str
+    volume: float
+    util: float
+    rev: float
+
+
+class PtWaste(BaseModel):
+    pt: str
+    letter: str
+    color: str
+    waste: float
+    util: float
+    rev: float
+    streams: list[WasteStream]
+    monthly: list[float]
+    monthly_util: list[float]
+
+
+class AiItem(BaseModel):
+    title: str
+    body: str                          # may contain <b>…</b> inline markup
+
+
+class WasteData(BaseModel):
+    generated_at: str
+    source: str
+    periods: list[str]
+    kpis: list[KpiCard]
+    trend: WasteTrend
+    util_rings: list[UtilRing]
+    sites: list[MapSite]
+    pt_colors: dict[str, str]
+    ai_items: list[AiItem]
+    ai_generated_at: str
+    comp_sets: list[CompSet]
+    rev_bars: list[RevBar]
+    gap_pareto: list[BarItem] = []
+    pt_realize: list[RevBar] = []
+    top_opps: list[TopOpp]
+    stories: list[Story]
+    pt_details: list[PtWaste]
+    key_insights: list[InsightItem]
+    next_actions: list[str]

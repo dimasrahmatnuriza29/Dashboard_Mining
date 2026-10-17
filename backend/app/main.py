@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import ai, dashboard
+from app.routers import ai, intel
 
 app = FastAPI(title="MindID Analytics API", version="0.1.0")
 
@@ -28,8 +28,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(dashboard.router)
+app.include_router(intel.router)
 app.include_router(ai.router)
+
+
+@app.on_event("startup")
+def warm_cache():
+    """Pre-fill the shared Snowflake cache in the background so the first
+    dashboard load is fast even right after a restart."""
+    import logging
+    import threading
+
+    def _warm():
+        try:
+            if settings.data_provider == "snowflake":
+                from app.data.snowflake import SnowflakeProvider
+
+                SnowflakeProvider().production()
+        except Exception as exc:  # warming is best-effort
+            logging.getLogger(__name__).warning("cache warm-up failed: %s", exc)
+
+    threading.Thread(target=_warm, daemon=True).start()
 
 
 @app.get("/")

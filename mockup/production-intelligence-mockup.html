@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MIND ID — Production Intelligence (Mockup)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+        colors: {
+          navy: { 700: '#123a63', 800: '#0d2d4f', 900: '#0a2240', 950: '#071a33' },
+        },
+      },
+    },
+  }
+</script>
+<style>
+  body { background: #eef2f6; }
+  .card { background: #fff; border: 1px solid #e3e9f0; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,40,70,.04), 0 4px 14px rgba(15,40,70,.05); transition: box-shadow .25s, transform .25s; }
+  .card:hover { box-shadow: 0 2px 4px rgba(15,40,70,.06), 0 10px 28px rgba(15,40,70,.10); }
+  .card-title { font-size: 13px; font-weight: 700; color: #0d2d4f; }
+  .tbl th { font-size: 10.5px; font-weight: 700; color: #0d2d4f; background: #f1f5fa; padding: 7px 10px; text-align: left; }
+  .tbl td { font-size: 11px; color: #334155; padding: 8px 10px; border-top: 1px solid #edf1f6; }
+  .tbl tbody tr { transition: background .15s; }
+  .tbl tbody tr:hover { background: #f6faff; }
+  .fade-in { animation: fadeIn .5s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .pulse-dot { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,.5); } 50% { box-shadow: 0 0 0 6px rgba(59,130,246,0); } }
+  select.hdr { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); color: #fff; font-size: 11.5px; border-radius: 8px; padding: 6px 28px 6px 10px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 9px center; cursor: pointer; }
+  select.hdr option { color: #0d2d4f; }
+  .rail-card { background: linear-gradient(160deg, #0d2d4f, #0a2240); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; color: #e6eef7; }
+
+  /* ===== review mode (mockup only) ===== */
+  body.rv-on, body.rv-on * { cursor: crosshair !important; }
+  #rvBtn { position: fixed; right: 18px; bottom: 18px; z-index: 95; display: flex; align-items: center; gap: 7px; border-radius: 999px; background: linear-gradient(90deg,#0d2d4f,#123a63); color: #fff; font-size: 12px; font-weight: 700; padding: 10px 18px; box-shadow: 0 6px 18px rgba(7,26,51,.35); border: 1px solid rgba(255,255,255,.15); transition: transform .15s; }
+  #rvBtn:hover { transform: translateY(-2px); }
+  #rvBtn.on { background: linear-gradient(90deg,#b45309,#f59e0b); }
+  #rvBox { position: fixed; z-index: 88; pointer-events: none; border: 2px solid #f59e0b; background: rgba(245,158,11,.14); border-radius: 8px; display: none; }
+  #rvTag { position: fixed; z-index: 89; pointer-events: none; background: #0d2d4f; color: #fff; font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; display: none; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,.3); }
+  #rvTag b { color: #fbbf24; }
+  #rvPanel { position: fixed; left: 18px; bottom: 18px; z-index: 95; width: 320px; max-height: 46vh; overflow: auto; background: #fff; border: 1px solid #dbe4ee; border-radius: 12px; box-shadow: 0 10px 30px rgba(7,26,51,.22); padding: 12px; display: none; }
+  .rv-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px; border-top: 1px solid #eef2f7; font-size: 11px; }
+  .rv-item b { color: #0d2d4f; }
+  .rv-item .sub { color: #94a3b8; font-size: 10px; }
+  .rv-item .rm { margin-left: auto; color: #cbd5e1; font-weight: 700; padding: 0 4px; }
+  .rv-item .rm:hover { color: #ef4444; }
+  #rvToast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 16px); z-index: 96; background: #052e16; color: #bbf7d0; font-size: 12px; font-weight: 600; padding: 9px 18px; border-radius: 999px; border: 1px solid rgba(34,197,94,.4); box-shadow: 0 8px 24px rgba(0,0,0,.3); opacity: 0; transition: all .25s; pointer-events: none; }
+  #rvToast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body class="font-sans text-slate-700 antialiased">
+
+<!-- ================= HEADER ================= -->
+<header class="sticky top-0 z-30 flex h-[74px] items-center gap-6 bg-gradient-to-r from-navy-950 via-navy-900 to-navy-800 px-6 text-white shadow-lg relative">
+  <div class="flex w-[190px] shrink-0 items-center gap-2.5">
+    <div class="grid h-10 w-10 place-items-center rounded-full border-[3px] border-white">
+      <div class="h-3.5 w-3.5 rounded-full bg-white"></div>
+    </div>
+    <div class="leading-tight">
+      <p class="text-[19px] font-extrabold tracking-tight">MIND ID</p>
+      <p class="text-[8.5px] font-medium text-slate-300">Mining for a Better Future</p>
+    </div>
+  </div>
+  <div class="h-10 w-px bg-white/20"></div>
+  <div class="min-w-0">
+    <h1 class="text-[21px] font-extrabold leading-tight">Production Intelligence</h1>
+    <p class="text-[12px] text-slate-300">Data-Driven Decisions for Higher Production, Greater Efficiency,<br />and Sustainable Growth</p>
+  </div>
+  <nav class="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-white/15 bg-white/5 p-1">
+    <a href="production-intelligence-mockup.html" aria-current="page" class="flex items-center gap-1.5 rounded-full bg-green-500/20 px-3.5 py-1.5 text-[11px] font-bold text-green-400 ring-1 ring-green-400/40">
+      <i data-lucide="bar-chart-3" class="h-3.5 w-3.5"></i>Production Intelligence
+    </a>
+    <a href="waste-to-value-mockup.html" class="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">
+      <i data-lucide="leaf" class="h-3.5 w-3.5"></i>Zero Waste Intelligence
+    </a>
+  </nav>
+
+  <div class="ml-auto flex items-center gap-5">
+    <div class="flex items-center gap-2.5">
+      <i data-lucide="calendar-days" class="h-5 w-5 text-slate-300"></i>
+      <div>
+        <p class="mb-0.5 text-[10px] text-slate-400">Period</p>
+        <select class="hdr" id="fPeriod">
+          <option>Jan 2025 – Dec 2025</option>
+          <option>Jan 2024 – Dec 2024</option>
+        </select>
+      </div>
+    </div>
+    <div class="h-10 w-px bg-white/20"></div>
+    <div class="flex items-center gap-2.5">
+      <div class="grid h-9 w-9 place-items-center rounded-full bg-white/10 ring-1 ring-white/25">
+        <i data-lucide="user-round" class="h-5 w-5"></i>
+      </div>
+      <div class="leading-tight">
+        <p class="text-[12px] font-semibold">MIND ID</p>
+        <p class="text-[10px] text-slate-400">Executive View <span class="ml-0.5">▾</span></p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= MAIN ================= -->
+<main class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_290px] gap-3.5 p-4">
+
+  <!-- col 1 · KPI -->
+  <div class="min-w-0 space-y-3.5">
+
+    <p class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-slate-500"><i data-lucide="layers" class="h-4 w-4 text-navy-700"></i>Holding Level KPI</p>
+
+    <!-- KPI ROW -->
+    <section class="grid grid-cols-6 gap-3">
+      <div class="card fade-in p-3.5">
+        <div class="mb-1 flex items-center justify-between"><p class="text-[10.5px] font-semibold text-slate-500">Total Production (Mt)</p><i data-lucide="truck" class="h-4 w-4 text-blue-500"></i></div>
+        <p class="text-[21px] font-extrabold text-navy-900"><span class="countup" data-v="12.46" data-d="2">0</span> <span class="text-[12px] font-semibold text-slate-400">Mt</span></p>
+        <p class="text-[10px] font-semibold text-green-600">▲ 6.8% <span class="font-normal text-slate-400">YoY</span></p>
+      </div>
+      <div class="card fade-in p-3.5">
+        <div class="mb-1 flex items-center justify-between"><p class="text-[10.5px] font-semibold text-slate-500">Production Achievement</p><i data-lucide="target" class="h-4 w-4 text-blue-500"></i></div>
+        <p class="text-[21px] font-extrabold text-navy-900"><span class="countup" data-v="92.4" data-d="1">0</span>%</p>
+        <p class="text-[10px] text-slate-400">vs 89.2% (YTD 2024) <span class="font-semibold text-green-600">▲ 3.2%</span></p>
+      </div>
+      <div class="card fade-in p-3.5">
+        <div class="mb-1 flex items-center justify-between"><p class="text-[10.5px] font-semibold text-slate-500">Total Revenue (USD)</p><i data-lucide="coins" class="h-4 w-4 text-blue-500"></i></div>
+        <p class="text-[21px] font-extrabold text-navy-900"><span class="countup" data-v="5.67" data-d="2">0</span> <span class="text-[12px] font-semibold text-slate-400">B</span></p>
+        <p class="text-[10px] font-semibold text-green-600">▲ 8.9% <span class="font-normal text-slate-400">YoY</span></p>
+      </div>
+      <div class="card fade-in p-3.5">
+        <div class="mb-1 flex items-center justify-between"><p class="text-[10.5px] font-semibold text-slate-500">Operational Cost (USD)</p><i data-lucide="wallet" class="h-4 w-4 text-blue-500"></i></div>
+        <p class="text-[21px] font-extrabold text-navy-900"><span class="countup" data-v="2.18" data-d="2">0</span> <span class="text-[12px] font-semibold text-slate-400">B</span></p>
+        <p class="text-[10px] font-semibold text-amber-600">▲ 5.7% <span class="font-normal text-slate-400">YoY</span></p>
+      </div>
+      <div class="card fade-in p-3.5">
+        <div class="mb-1 flex items-center justify-between"><p class="text-[10.5px] font-semibold text-slate-500">Unplanned Downtime</p><i data-lucide="wrench" class="h-4 w-4 text-blue-500"></i></div>
+        <p class="text-[21px] font-extrabold text-navy-900"><span class="countup" data-v="2.8" data-d="1">0</span>%</p>
+        <p class="text-[10px] font-semibold text-green-600">▼ 28.6% <span class="font-normal text-slate-400">YoY</span></p>
+      </div>
+      <div class="card fade-in p-3.5">
+        <div class="mb-1 flex items-center justify-between"><p class="text-[10.5px] font-semibold text-slate-500">CO₂ Intensity (tCO₂e/t)</p><i data-lucide="leaf" class="h-4 w-4 text-green-600"></i></div>
+        <p class="text-[21px] font-extrabold text-navy-900"><span class="countup" data-v="0.42" data-d="2">0</span></p>
+        <p class="text-[10px] font-semibold text-green-600">▼ 12.4% <span class="font-normal text-slate-400">YoY</span></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- col 2 · Our Commitment -->
+  <div class="rail-card fade-in self-start p-4">
+    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Our Commitment</p>
+    <div class="mt-2 flex items-start gap-3">
+      <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-green-500/20 text-green-400"><i data-lucide="leaf" class="h-5 w-5"></i></div>
+      <div>
+        <p class="text-[13.5px] font-extrabold leading-snug text-white">Higher Production<br />Less Emission<br />Greater Value</p>
+        <p class="mt-1.5 text-[10px] text-slate-400">Toward Net Zero 2060</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- col 1 · ROW: trend + donut + pt table -->
+  <section class="grid min-w-0 grid-cols-12 gap-3.5">
+      <div class="card fade-in relative col-span-5 p-4">
+        <p class="card-title">Production Trend &amp; Forecast <span class="font-normal text-slate-400">(Total Holding)</span></p>
+        <p class="text-[10px] text-slate-400">Unit: Million Ton</p>
+        <div class="absolute right-4 top-4 rounded-lg border border-blue-100 bg-blue-50/80 px-2.5 py-1.5 text-right shadow-sm">
+          <p class="text-[9px] font-semibold text-slate-500">Dec 2025 Forecast</p>
+          <p class="text-[14px] font-extrabold text-navy-900">14.32 <span class="text-[9.5px] font-semibold text-slate-500">Mt</span></p>
+          <p class="text-[9.5px] font-semibold text-green-600">▲ 7.5% vs Target</p>
+        </div>
+        <div id="chTrend" class="mt-1 h-[268px]"></div>
+      </div>
+
+      <div class="card fade-in col-span-3 p-4">
+        <p class="card-title">Production by Commodity <span class="font-normal text-slate-400">(Holding)</span></p>
+        <div id="chCommodity" class="mt-1 h-[218px]"></div>
+        <div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-slate-100 pt-2.5 text-[10px]">
+          <p class="flex items-center gap-1.5 text-slate-500"><span class="h-2 w-2 shrink-0 rounded-full" style="background:#334155"></span>Coal<span class="ml-auto font-bold text-navy-800">52.3%</span></p>
+          <p class="flex items-center gap-1.5 text-slate-500"><span class="h-2 w-2 shrink-0 rounded-full" style="background:#16a34a"></span>Nickel<span class="ml-auto font-bold text-navy-800">18.7%</span></p>
+          <p class="flex items-center gap-1.5 text-slate-500"><span class="h-2 w-2 shrink-0 rounded-full" style="background:#3b82f6"></span>Aluminium<span class="ml-auto font-bold text-navy-800">15.4%</span></p>
+          <p class="flex items-center gap-1.5 text-slate-500"><span class="h-2 w-2 shrink-0 rounded-full" style="background:#f59e0b"></span>Tin<span class="ml-auto font-bold text-navy-800">8.1%</span></p>
+          <p class="flex items-center gap-1.5 text-slate-500"><span class="h-2 w-2 shrink-0 rounded-full" style="background:#eab308"></span>Gold<span class="ml-auto font-bold text-navy-800">5.5%</span></p>
+        </div>
+      </div>
+
+      <div class="card fade-in col-span-4 p-4">
+        <p class="card-title">Production by PT</p>
+        <table class="tbl mt-2 w-full">
+          <thead><tr><th></th><th class="text-right">Actual</th><th class="text-right">Plan/RKAP</th><th class="text-right">Achievement</th></tr></thead>
+          <tbody>
+            <tr><td class="font-semibold"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" style="background:#16a34a"></span>ANTAM</td><td class="text-right">2.82</td><td class="text-right">3.15</td><td class="text-right font-bold text-amber-600">88.7% <span class="font-normal text-green-600">+5.4%</span></td></tr>
+            <tr><td class="font-semibold"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" style="background:#ef4444"></span>Bukit Asam</td><td class="text-right">6.31</td><td class="text-right">6.70</td><td class="text-right font-bold text-navy-800">94.0% <span class="font-normal text-green-600">+7.7%</span></td></tr>
+            <tr><td class="font-semibold"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" style="background:#a855f7"></span>Timah</td><td class="text-right">1.01</td><td class="text-right">1.12</td><td class="text-right font-bold text-amber-600">90.2% <span class="font-normal text-green-600">+4.1%</span></td></tr>
+            <tr><td class="font-semibold"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" style="background:#2563eb"></span>Inalum</td><td class="text-right">2.32</td><td class="text-right">2.45</td><td class="text-right font-bold text-navy-800">94.8% <span class="font-normal text-green-600">+6.3%</span></td></tr>
+            <tr class="font-bold text-navy-900"><td>Total Holding</td><td class="text-right">12.46</td><td class="text-right">13.42</td><td class="text-right">92.4% <span class="font-normal text-green-600">+6.8%</span></td></tr>
+          </tbody>
+        </table>
+        <p class="mt-3 text-[9.5px] text-slate-400">Volume in Mt · Achievement = Actual / Plan RKAP</p>
+      </div>
+  </section>
+
+  <!-- col 2 · AI Recommendation (height follows the Production by PT row) -->
+  <div class="card fade-in p-4">
+    <div class="flex items-center justify-between">
+      <p class="card-title flex items-center gap-1.5"><i data-lucide="sparkles" class="h-4 w-4 text-blue-600"></i>AI Recommendation</p>
+      <button class="flex items-center gap-1 text-[9.5px] font-semibold text-blue-600 hover:underline">View Detail <i data-lucide="arrow-right" class="h-3 w-3"></i></button>
+    </div>
+    <div class="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+      <p class="text-[11px] font-bold text-navy-800">Production Opportunity</p>
+      <span class="mt-1 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-700 ring-1 ring-amber-300">High Impact</span>
+      <p class="mt-2 text-[10px] leading-relaxed text-slate-600">Based on current trend and weather forecast, production in Dec 2025 is estimated to be 7.5% below target. Key driver: heavy rainfall at ANTAM site 3 and equipment availability at Bukit Asam.</p>
+    </div>
+    <p class="mt-2.5 text-[10.5px] font-bold text-navy-800">Recommended Actions</p>
+    <ol class="mt-1 list-decimal space-y-1 pl-4 text-[10px] leading-relaxed text-slate-600">
+      <li>Accelerate maintenance for critical equipment at ANTAM site 3</li>
+      <li>Optimize hauling allocation at Bukit Asam</li>
+      <li>Adjust production plan and utilize inventory buffer</li>
+    </ol>
+  </div>
+
+  <!-- col 1 · ROW: map + top5 + vs plan -->
+  <section class="grid min-w-0 grid-cols-12 gap-3.5">
+      <div class="card fade-in col-span-4 p-4">
+        <div class="flex items-center justify-between">
+          <p class="card-title">Production by Site / Location</p>
+          <div class="flex gap-1 text-[10px] font-semibold">
+            <span class="rounded-md bg-blue-50 px-2 py-1 text-blue-700 ring-1 ring-blue-200">All PT</span>
+            <span class="cursor-pointer rounded-md px-2 py-1 text-slate-500 hover:bg-slate-50">By PT</span>
+          </div>
+        </div>
+        <div id="chMap" class="mt-1 h-[240px]"></div>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 text-[9.5px] font-semibold text-slate-500">
+          <span><span class="mr-1 inline-block h-2 w-2 rounded-full" style="background:#16a34a"></span>ANTAM</span>
+          <span><span class="mr-1 inline-block h-2 w-2 rounded-full" style="background:#ef4444"></span>Bukit Asam</span>
+          <span><span class="mr-1 inline-block h-2 w-2 rounded-full" style="background:#a855f7"></span>Timah</span>
+          <span><span class="mr-1 inline-block h-2 w-2 rounded-full" style="background:#2563eb"></span>Inalum</span>
+        </div>
+      </div>
+
+      <div class="card fade-in col-span-4 p-4">
+        <div class="flex items-center justify-between">
+          <p class="card-title">Top 5 Production Sites <span class="font-normal text-slate-400">(Total Holding)</span></p>
+          <p class="text-[9.5px] text-slate-400">Unit: Million Ton</p>
+        </div>
+        <table class="tbl mt-2 w-full">
+          <thead><tr><th>Rank</th><th>Site</th><th>PT</th><th class="text-right">Prod. (Mt)</th><th class="text-right">vs Plan</th><th>Trend</th></tr></thead>
+          <tbody>
+            <tr><td class="font-bold text-navy-800">1</td><td class="font-semibold">Tanjung Enim</td><td>Bukit Asam</td><td class="text-right font-bold">3.12</td><td class="text-right font-semibold text-green-600">▲ 8.7%</td><td><div class="spark h-6 w-16" data-s="2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.12" data-c="#16a34a"></div></td></tr>
+            <tr><td class="font-bold text-navy-800">2</td><td class="font-semibold">Batu Hijau</td><td>ANTAM</td><td class="text-right font-bold">2.46</td><td class="text-right font-semibold text-green-600">▲ 6.1%</td><td><div class="spark h-6 w-16" data-s="2.0,2.05,2.15,2.2,2.28,2.35,2.4,2.46" data-c="#16a34a"></div></td></tr>
+            <tr><td class="font-bold text-navy-800">3</td><td class="font-semibold">Kundur</td><td>INALUM</td><td class="text-right font-bold">1.98</td><td class="text-right font-semibold text-green-600">▲ 5.3%</td><td><div class="spark h-6 w-16" data-s="1.6,1.68,1.72,1.8,1.85,1.9,1.95,1.98" data-c="#16a34a"></div></td></tr>
+            <tr><td class="font-bold text-navy-800">4</td><td class="font-semibold">Toboali</td><td>Timah</td><td class="text-right font-bold">1.23</td><td class="text-right font-semibold text-green-600">▲ 3.9%</td><td><div class="spark h-6 w-16" data-s="1.05,1.08,1.1,1.14,1.17,1.2,1.22,1.23" data-c="#16a34a"></div></td></tr>
+            <tr><td class="font-bold text-navy-800">5</td><td class="font-semibold">Pomalaa</td><td>ANTAM</td><td class="text-right font-bold">1.12</td><td class="text-right font-semibold text-green-600">▲ 2.8%</td><td><div class="spark h-6 w-16" data-s="0.95,0.98,1.0,1.04,1.06,1.09,1.11,1.12" data-c="#16a34a"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card fade-in col-span-4 p-4">
+        <p class="card-title">Production vs Plan <span class="font-normal text-slate-400">(By PT)</span></p>
+        <div id="chVsPlan" class="mt-1 h-[265px]"></div>
+      </div>
+  </section>
+
+  <!-- col 2 · Market & Commodity Price -->
+  <div class="card fade-in flex flex-col p-4">
+    <div class="flex items-center justify-between">
+      <p class="card-title">Market &amp; Commodity Price</p>
+      <button class="flex items-center gap-1 text-[9.5px] font-semibold text-blue-600 hover:underline">View All <i data-lucide="arrow-right" class="h-3 w-3"></i></button>
+    </div>
+    <ul class="mt-2.5 space-y-3 text-[11px]">
+      <li class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="circle-dot" class="h-3.5 w-3.5 text-slate-400"></i>Nickel (LME)</span><span class="font-bold text-navy-800">16,820 <span class="text-[9.5px] font-semibold text-green-600">▲ 2.4%</span></span></li>
+      <li class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="circle-dot" class="h-3.5 w-3.5 text-slate-400"></i>Coal (ICE)</span><span class="font-bold text-navy-800">118.5 <span class="text-[9.5px] font-semibold text-green-600">▲ 3.1%</span></span></li>
+      <li class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="circle-dot" class="h-3.5 w-3.5 text-slate-400"></i>Aluminium (LME)</span><span class="font-bold text-navy-800">2,420 <span class="text-[9.5px] font-semibold text-red-500">▼ 1.8%</span></span></li>
+      <li class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="circle-dot" class="h-3.5 w-3.5 text-slate-400"></i>Tin (LME)</span><span class="font-bold text-navy-800">31,250 <span class="text-[9.5px] font-semibold text-green-600">▲ 2.6%</span></span></li>
+      <li class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="circle-dot" class="h-3.5 w-3.5 text-slate-400"></i>Gold (LBMA)</span><span class="font-bold text-navy-800">2,380 <span class="text-[9.5px] font-semibold text-green-600">▲ 1.2%</span></span></li>
+    </ul>
+  </div>
+
+  <!-- insights row -->
+  <section class="col-span-2 grid grid-cols-2 gap-3.5">
+      <div class="rail-card fade-in p-4">
+        <p class="flex items-center gap-2 text-[13px] font-bold text-white"><i data-lucide="lightbulb" class="h-4 w-4 text-amber-300"></i>Key Insights</p>
+        <ul class="mt-2.5 space-y-2 text-[11.5px] leading-relaxed text-slate-200">
+          <li class="flex gap-2"><i data-lucide="circle-check" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400"></i>Total produksi YTD 2025 mencapai 12.46 Mt, tumbuh 6.8% YoY.</li>
+          <li class="flex gap-2"><i data-lucide="circle-check" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400"></i>ANTAM dan Bukit Asam menjadi kontributor utama produksi holding (52.3%).</li>
+          <li class="flex gap-2"><i data-lucide="triangle-alert" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400"></i>Forecast produksi Des 2025 diperkirakan 7.5% di bawah target karena faktor cuaca dan downtime.</li>
+          <li class="flex gap-2"><i data-lucide="circle-check" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400"></i>Peluang peningkatan produksi terbesar di site Tanjung Enim dan Batu Hijau.</li>
+        </ul>
+      </div>
+      <div class="rail-card fade-in p-4">
+        <p class="flex items-center gap-2 text-[13px] font-bold text-white"><i data-lucide="target" class="h-4 w-4 text-blue-300"></i>Next Best Action</p>
+        <ol class="mt-2.5 space-y-2 text-[11.5px] leading-relaxed text-slate-200">
+          <li class="flex gap-2"><span class="grid h-4.5 w-4.5 shrink-0 place-items-center rounded-full bg-blue-500/25 text-[9px] font-bold text-blue-300" style="height:18px;width:18px">1</span>Optimalisasi jadwal maintenance alat kritikal.</li>
+          <li class="flex gap-2"><span class="grid shrink-0 place-items-center rounded-full bg-blue-500/25 text-[9px] font-bold text-blue-300" style="height:18px;width:18px">2</span>Percepat realisasi produksi di 5 site berkinerja tinggi.</li>
+          <li class="flex gap-2"><span class="grid shrink-0 place-items-center rounded-full bg-blue-500/25 text-[9px] font-bold text-blue-300" style="height:18px;width:18px">3</span>Monitor harga komoditas dan sesuaikan strategi penjualan.</li>
+          <li class="flex gap-2"><span class="grid shrink-0 place-items-center rounded-full bg-blue-500/25 text-[9px] font-bold text-blue-300" style="height:18px;width:18px">4</span>Evaluasi dan implementasi rekomendasi AI secara berkala.</li>
+        </ol>
+      </div>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const charts = []
+const fmt = (n, d = 0) => n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d })
+const PT_COLORS = { 'ANTAM': '#16a34a', 'Bukit Asam': '#ef4444', 'Timah': '#a855f7', 'Inalum': '#2563eb' }
+
+/* ---------- count-up ---------- */
+document.querySelectorAll('.countup').forEach((el) => {
+  const target = parseFloat(el.dataset.v), d = +(el.dataset.d || 0), t0 = performance.now(), dur = 1300
+  const tick = (t) => {
+    const p = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3)
+    el.textContent = fmt(target * e, d)
+    if (p < 1) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+})
+
+/* ---------- sparklines ---------- */
+document.querySelectorAll('.spark').forEach((el) => {
+  const data = el.dataset.s.split(',').map(Number)
+  const ch = echarts.init(el); charts.push(ch)
+  ch.setOption({
+    grid: { left: 1, right: 1, top: 2, bottom: 2 },
+    xAxis: { type: 'category', show: false, data: data.map((_, i) => i) },
+    yAxis: { type: 'value', show: false, min: Math.min(...data) * 0.98 },
+    series: [{ type: 'line', data, symbol: 'none', smooth: true, lineStyle: { width: 1.5, color: el.dataset.c || '#16a34a' },
+      areaStyle: { color: (el.dataset.c || '#16a34a') + '22' } }],
+  })
+})
+
+/* ---------- production trend & forecast ---------- */
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const ptData = {
+  'Bukit Asam': [0.66,0.67,0.68,0.69,0.70,0.70,0.71,0.72,0.72, 0.74,0.75,0.76],
+  'ANTAM':      [0.29,0.30,0.30,0.31,0.31,0.32,0.32,0.32,0.33, 0.33,0.34,0.35],
+  'Inalum':     [0.24,0.24,0.25,0.25,0.26,0.26,0.26,0.27,0.27, 0.28,0.28,0.29],
+  'Timah':      [0.10,0.10,0.11,0.11,0.11,0.11,0.12,0.12,0.12, 0.12,0.13,0.13],
+}
+const ACT_N = 9  // Jan–Sep actual, Oct–Dec forecast
+const totals = months.map((_, i) => Object.values(ptData).reduce((s, v) => s + v[i], 0))
+const chTrend = echarts.init($('#chTrend')); charts.push(chTrend)
+chTrend.setOption({
+  tooltip: { trigger: 'axis', textStyle: { fontSize: 11 }, valueFormatter: (v) => fmt(v, 2) + ' Mt' },
+  legend: { top: 2, left: 0, itemGap: 14, itemWidth: 18, itemHeight: 3,
+    textStyle: { fontSize: 10, color: '#475569' },
+    data: ['Actual', 'Forecast', 'Target'] },
+  grid: { left: 36, right: 10, top: 34, bottom: 24 },
+  xAxis: { type: 'category', data: months, boundaryGap: false, axisLabel: { fontSize: 9.5, color: '#64748b' }, axisLine: { lineStyle: { color: '#dbe3ec' } } },
+  yAxis: { type: 'value', min: 1.0, max: 1.8, axisLabel: { fontSize: 10, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#eef2f6' } } },
+  series: [
+    { name: 'Actual', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
+      data: totals.map((v, i) => (i < ACT_N ? v : null)),  // Jan–Sep
+      lineStyle: { width: 2.5, color: '#2563eb' }, itemStyle: { color: '#2563eb', borderColor: '#fff', borderWidth: 1.5 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(37,99,235,.18)' }, { offset: 1, color: 'rgba(37,99,235,0)' }] } } },
+    { name: 'Forecast', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
+      data: totals.map((v, i) => (i >= ACT_N - 1 ? v : null)),  // Sep → Dec (bridges at Sep)
+      lineStyle: { width: 2.5, type: 'dashed', color: '#f59e0b' }, itemStyle: { color: '#f59e0b', borderColor: '#fff', borderWidth: 1.5 } },
+    { name: 'Target', type: 'line', data: months.map(() => 1.42), symbol: 'none',
+      lineStyle: { type: 'dashed', width: 1.5, color: '#0d2d4f' }, itemStyle: { color: '#0d2d4f' } },
+  ],
+})
+
+/* ---------- commodity donut ---------- */
+const chCom = echarts.init($('#chCommodity')); charts.push(chCom)
+chCom.setOption({
+  tooltip: { textStyle: { fontSize: 11 }, valueFormatter: (v) => v + '%' },
+  series: [{
+    type: 'pie', radius: ['56%', '80%'], center: ['50%', '50%'],
+    label: { show: true, position: 'center', formatter: '{a|12.46 Mt}\n{b|Total Production}',
+      rich: { a: { fontSize: 16, fontWeight: 800, color: '#0d2d4f' }, b: { fontSize: 9.5, color: '#94a3b8' } } },
+    itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
+    data: [
+      { name: 'Coal', value: 52.3, itemStyle: { color: '#334155' } },
+      { name: 'Nickel', value: 18.7, itemStyle: { color: '#16a34a' } },
+      { name: 'Aluminium', value: 15.4, itemStyle: { color: '#3b82f6' } },
+      { name: 'Tin', value: 8.1, itemStyle: { color: '#f59e0b' } },
+      { name: 'Gold', value: 5.5, itemStyle: { color: '#eab308' } },
+    ],
+  }],
+})
+
+/* ---------- production vs plan ---------- */
+const pts = ['ANTAM', 'Bukit Asam', 'Timah', 'Inalum']
+const actual = [2.82, 6.31, 1.01, 2.32], plan = [3.15, 6.70, 1.12, 2.45]
+const ach = ['88.7%', '94.0%', '90.2%', '94.8%']
+const chVP = echarts.init($('#chVsPlan')); charts.push(chVP)
+chVP.setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, textStyle: { fontSize: 11 }, valueFormatter: (v) => fmt(v, 2) + ' Mt' },
+  legend: { top: 0, right: 0, itemWidth: 12, itemHeight: 9, textStyle: { fontSize: 10, color: '#475569' } },
+  grid: { left: 34, right: 8, top: 30, bottom: 36 },
+  xAxis: { type: 'category', data: pts.map((p, i) => p + '\n' + ach[i]),
+    axisLabel: { fontSize: 9.5, color: '#64748b', interval: 0, lineHeight: 13 }, axisLine: { lineStyle: { color: '#dbe3ec' } } },
+  yAxis: { type: 'value', max: 8, axisLabel: { fontSize: 10, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#eef2f6' } } },
+  series: [
+    { name: 'Actual', type: 'bar', data: actual, barWidth: '30%', itemStyle: { color: '#2563eb', borderRadius: [3, 3, 0, 0] },
+      label: { show: true, position: 'top', fontSize: 9, fontWeight: 700, color: '#0d2d4f', formatter: (p) => fmt(p.value, 2) } },
+    { name: 'Plan/RKAP', type: 'bar', data: plan, barWidth: '30%', itemStyle: { color: '#93c5fd', borderRadius: [3, 3, 0, 0] },
+      label: { show: true, position: 'top', fontSize: 9, color: '#64748b', formatter: (p) => fmt(p.value, 2) } },
+  ],
+})
+
+/* ---------- indonesia map ---------- */
+const sites = [
+  { name: 'Bukit Asam · Tanjung Enim', pt: 'Bukit Asam', lon: 103.80, lat: -3.75 },
+  { name: 'Bukit Asam · Lahat',        pt: 'Bukit Asam', lon: 103.55, lat: -3.80 },
+  { name: 'Bukit Asam · Muara Enim',   pt: 'Bukit Asam', lon: 104.10, lat: -3.60 },
+  { name: 'Bukit Asam · Tarahan',      pt: 'Bukit Asam', lon: 105.35, lat: -5.55 },
+  { name: 'INALUM · Kundur',           pt: 'Inalum',     lon: 103.42, lat: 0.83 },
+  { name: 'INALUM · Kuala Tanjung',    pt: 'Inalum',     lon: 99.45,  lat: 3.35 },
+  { name: 'ANTAM · Pomalaa',           pt: 'ANTAM',      lon: 121.62, lat: -4.18 },
+  { name: 'ANTAM · Batu Hijau',        pt: 'ANTAM',      lon: 116.90, lat: -8.97 },
+  { name: 'ANTAM · UBPN Sultra',       pt: 'ANTAM',      lon: 122.40, lat: -3.95 },
+  { name: 'Timah · Toboali',           pt: 'Timah',      lon: 107.95, lat: -3.00 },
+  { name: 'Timah · Belitung',          pt: 'Timah',      lon: 107.60, lat: -2.90 },
+  { name: 'Timah · Kundur',            pt: 'Timah',      lon: 103.40, lat: 0.85 },
+]
+const GEO_URLS = ['https://raw.githubusercontent.com/ans-4175/peta-indonesia-geojson/master/indonesia-prov.geojson']
+const chMap = echarts.init($('#chMap')); charts.push(chMap)
+const drawMap = () => {
+  const opt = {
+    tooltip: { textStyle: { fontSize: 11 }, formatter: (p) => p.name },
+    geo: { map: 'indonesia', roam: false, zoom: 1.18, top: 12, bottom: 8,
+      itemStyle: { areaColor: '#e8eef5', borderColor: '#c3cdd9', borderWidth: .6 },
+      emphasis: { itemStyle: { areaColor: '#dbe6f2' }, label: { show: false } } },
+    series: sites.map((s) => ({
+      name: s.pt, type: 'scatter', coordinateSystem: 'geo',
+      symbolSize: 10,
+      itemStyle: { color: PT_COLORS[s.pt], borderColor: '#fff', borderWidth: 1.5, shadowBlur: 4, shadowColor: 'rgba(0,0,0,.25)' },
+      data: [{ name: s.name, value: [s.lon, s.lat] }],
+    })),
+  }
+  chMap.setOption(opt)
+}
+fetch(GEO_URLS[0])
+  .then((r) => { if (!r.ok) throw 0; return r.json() })
+  .then((geo) => { echarts.registerMap('indonesia', geo); drawMap() })
+  .catch(() => {
+    chMap.setOption({
+      tooltip: { textStyle: { fontSize: 11 } },
+      grid: { left: 8, right: 8, top: 8, bottom: 8 },
+      xAxis: { min: 94, max: 142, show: false }, yAxis: { min: -12, max: 8, show: false },
+      series: sites.map((s) => ({
+        name: s.pt, type: 'scatter', symbolSize: 11,
+        itemStyle: { color: PT_COLORS[s.pt], borderColor: '#fff', borderWidth: 1.5 },
+        data: [{ name: s.name, value: [s.lon, s.lat] }],
+      })),
+    })
+  })
+
+lucide.createIcons()
+window.addEventListener('resize', () => charts.forEach((c) => c.resize()))
+</script>
+
+<!-- ============ REVIEW MODE (mockup only) ============ -->
+<button id="rvBtn"><i data-lucide="mouse-pointer-2" class="h-4 w-4"></i><span>Review Mode</span></button>
+<div id="rvBox"></div>
+<div id="rvTag"></div>
+<div id="rvPanel">
+  <div class="mb-1 flex items-center justify-between">
+    <p class="text-[12px] font-extrabold text-navy-900">Bagian yang ditandai</p>
+    <button id="rvCopy" class="rounded-md bg-navy-800 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-navy-700">Copy list</button>
+  </div>
+  <p class="mb-1 text-[10px] leading-snug text-slate-400">Setiap klik <b>langsung menyalin</b> nama bagian ke clipboard — tinggal <b>Ctrl+V</b> di chat Cascade lalu tulis revisinya.</p>
+  <div id="rvList"></div>
+</div>
+<div id="rvToast"></div>
+
+<script>
+(() => {
+  const body = document.body
+  const btn = document.querySelector('#rvBtn'), box = document.querySelector('#rvBox'),
+        tag = document.querySelector('#rvTag'), panel = document.querySelector('#rvPanel'),
+        list = document.querySelector('#rvList')
+  let on = false, picked = []
+
+  const secName = (el) => {
+    const card = el.closest('.card, .rail-card, section, header, aside, table, footer')
+    if (!card) return 'Body'
+    const t = card.querySelector('.card-title, h1, p.font-bold, p[class*="font-extrabold"]')
+    const lbl = t && t.textContent.trim().split('\n')[0].trim()
+    if (lbl && lbl.length < 60) return lbl
+    return card.tagName.toLowerCase()
+  }
+  const elHint = (el) => {
+    if (el.id) return '#' + el.id
+    const cls = (el.getAttribute('class') || '').split(' ').filter(Boolean).slice(0, 3).join('.')
+    return el.tagName.toLowerCase() + (cls ? '.' + cls : '')
+  }
+
+  const move = (e) => {
+    if (!on) return
+    const el = e.target
+    if (el === body || el === document.documentElement) { box.style.display = tag.style.display = 'none'; return }
+    const r = el.getBoundingClientRect()
+    box.style.display = 'block'
+    box.style.left = r.left + 'px'; box.style.top = r.top + 'px'
+    box.style.width = r.width + 'px'; box.style.height = r.height + 'px'
+    tag.style.display = 'block'
+    tag.innerHTML = `<b>${secName(el)}</b> · ${elHint(el)}`
+    const ty = r.top > 26 ? r.top - 24 : r.bottom + 4
+    tag.style.left = Math.max(4, r.left) + 'px'; tag.style.top = ty + 'px'
+  }
+
+  const render = () => {
+    list.innerHTML = picked.map((p, i) =>
+      `<div class="rv-item"><b>${i + 1}. ${p.sec}</b><span class="sub">(${p.hint})</span><span class="rm" data-i="${i}">✕</span></div>`).join('')
+    panel.style.display = picked.length ? 'block' : 'none'
+  }
+
+  const toast = document.querySelector('#rvToast')
+  let toastT
+  const ping = (msg) => {
+    toast.textContent = msg; toast.classList.add('show')
+    clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('show'), 2200)
+  }
+  const copyText = (txt) => {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(txt)
+    return new Promise((res, rej) => {
+      const ta = document.createElement('textarea')
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select()
+      try { document.execCommand('copy') ? res() : rej() } catch (e) { rej(e) }
+      ta.remove()
+    })
+  }
+
+  document.addEventListener('mousemove', move)
+  document.addEventListener('click', (e) => {
+    if (!on) return
+    if (e.target.closest('#rvBtn')) return
+    if (e.target.closest('.rm')) { picked.splice(+e.target.dataset.i, 1); render(); return }
+    if (e.target.closest('#rvPanel')) return
+    e.preventDefault(); e.stopPropagation()
+    const sec = secName(e.target), hint = elHint(e.target)
+    picked.push({ sec, hint })
+    render()
+    panel.style.display = 'block'
+    copyText(`${sec} (${hint}): `)
+      .then(() => ping('✓ Tersalin — Ctrl+V di chat, lalu tulis revisinya'))
+      .catch(() => ping('Gagal copy — pakai tombol Copy list'))
+    box.style.borderColor = '#22c55e'; box.style.background = 'rgba(34,197,94,.18)'
+    setTimeout(() => { box.style.borderColor = '#f59e0b'; box.style.background = 'rgba(245,158,11,.14)' }, 250)
+  }, true)
+
+  document.querySelector('#rvCopy').addEventListener('click', () => {
+    const txt = picked.map((p, i) => `${i + 1}. ${p.sec} (${p.hint}): `).join('\n')
+    copyText(txt).then(() => ping('✓ List tersalin — Ctrl+V di chat'))
+    document.querySelector('#rvCopy').textContent = 'Copied!'
+    setTimeout(() => document.querySelector('#rvCopy').textContent = 'Copy list', 1200)
+  })
+
+  btn.addEventListener('click', () => {
+    on = !on
+    body.classList.toggle('rv-on', on)
+    btn.classList.toggle('on', on)
+    btn.querySelector('span').textContent = on ? 'Exit Review' : 'Review Mode'
+    if (!on) { box.style.display = tag.style.display = 'none' }
+  })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && on) btn.click() })
+})()
+</script>
+</body>
+</html>

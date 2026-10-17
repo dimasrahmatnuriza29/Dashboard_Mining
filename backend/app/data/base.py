@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.schemas import DashboardData
+from app.schemas import ProductionData, WasteData
 
 
 class DataProvider(Protocol):
@@ -16,4 +16,6 @@ class DataProvider(Protocol):
 
     name: str
 
-    def dashboard(self, pt: str | None = None, asof: str | None = None) -> DashboardData: ...
+    def production(self, period: str | None = None, pt: str | None = None) -> ProductionData: ...
+
+    def waste(self, period: str | None = None) -> WasteData: ...

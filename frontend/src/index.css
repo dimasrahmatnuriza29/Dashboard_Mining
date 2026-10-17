@@ -2,7 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-body { background:#F5F7FA; }
+body { background:#eef2f6; }
+
+/* ---- mockup card system (Production / Zero Waste pages) ---- */
+.card { background:#fff; border:1px solid #e3e9f0; border-radius:14px; box-shadow:0 1px 2px rgba(15,40,70,.04),0 4px 14px rgba(15,40,70,.05); transition:box-shadow .25s,transform .25s; }
+.card:hover { box-shadow:0 2px 4px rgba(15,40,70,.06),0 10px 28px rgba(15,40,70,.10); }
+.card-title { font-size:13px; font-weight:700; color:#0d2d4f; }
+.dark-card { background:linear-gradient(160deg,#0d2d4f,#0a2240); border:1px solid rgba(255,255,255,.08); border-radius:14px; color:#e6eef7; }
+.tbl th { font-size:10.5px; font-weight:700; color:#0d2d4f; background:#f1f5fa; padding:7px 10px; text-align:left; }
+.tbl td { font-size:11px; color:#334155; padding:8px 10px; border-top:1px solid #edf1f6; }
+.tbl tbody tr { transition:background .15s; }
+.tbl tbody tr:hover { background:#f6faff; }
+.tab { padding:5px 12px; font-size:11px; font-weight:600; color:#64748b; border-radius:8px; cursor:pointer; transition:all .2s; }
+.tab.active { background:#e8f1fb; color:#0d4f8b; box-shadow:inset 0 0 0 1px #c9ddf3; }
+.tab-line { padding:6px 14px; font-size:11px; font-weight:700; color:#64748b; border-bottom:2px solid transparent; cursor:pointer; }
+.tab-line.active { color:#0d4f8b; border-bottom-color:#0d4f8b; }
+.ring { --p:70; --c:#16a34a; width:62px; height:62px; border-radius:50%; background:conic-gradient(var(--c) calc(var(--p) * 1%),#e6edf3 0); display:grid; place-items:center; }
+.ring > span { width:50px; height:50px; border-radius:50%; background:#fff; display:grid; place-items:center; font-size:13px; font-weight:800; color:#0d2d4f; }
+.fade-in { animation:fadeIn .5s ease both; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none;} }
+.pulse-dot { animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(34,197,94,.5);} 50% { box-shadow:0 0 0 6px rgba(34,197,94,0);} }
+select.hdr { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.18); color:#fff; font-size:11.5px; border-radius:8px; padding:6px 28px 6px 10px; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center; cursor:pointer; }
+select.hdr option { color:#0d2d4f; }
+.story-track { transition:transform .6s cubic-bezier(.4,0,.2,1); }
 
 /* ---- topographic contour background ---- */
 .contour-bg {

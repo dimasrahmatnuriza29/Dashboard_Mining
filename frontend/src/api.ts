@@ -1,4 +1,4 @@
-import type { ChatResponse, DashboardData, InsightResponse } from './types'
+import type { ChatResp, InsightResp, ProductionData, WasteData } from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
@@ -6,28 +6,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export const fetchDashboard = (pt?: string, asof?: string) => {
-  const q = new URLSearchParams()
-  if (pt && pt !== 'ALL') q.set('pt', pt)
-  if (asof) q.set('asof', asof)
-  const qs = q.toString()
-  return request<DashboardData>(`/api/dashboard${qs ? `?${qs}` : ''}`)
+const qs = (period?: string, pt?: string) => {
+  const p = new URLSearchParams()
+  if (period) p.set('period', period)
+  if (pt) p.set('pt', pt)
+  const s = p.toString()
+  return s ? `?${s}` : ''
 }
 
-export const sendChat = (
-  message: string,
-  history: { role: 'user' | 'assistant'; content: string }[],
-  context: Record<string, unknown>,
-) =>
-  request<ChatResponse>('/api/ai/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history, context }),
-  })
+export const fetchProduction = (period?: string, pt?: string) =>
+  request<ProductionData>(`/api/production${qs(period, pt)}`)
 
-export const fetchInsights = (context: Record<string, unknown>) =>
-  request<InsightResponse>('/api/ai/insights', {
+export const fetchWaste = (period?: string) =>
+  request<WasteData>(`/api/waste${qs(period)}`)
+
+export const fetchInsight = (context: unknown) =>
+  request<InsightResp>('/api/ai/insights', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ context }),
+  })
+
+export const fetchChat = (
+  message: string,
+  history: { role: string; content: string }[],
+  context: unknown,
+) =>
+  request<ChatResp>('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history, context }),
   })
